@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Embrator Operations Hub</title>
+    <meta
+      name="description"
+      content="بوابة ويب لإدارة الزيارات والتحصيل والطلبيات والعملاء والمنتجات ولوحة التحليلات."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+    <div class="ambient ambient-c"></div>
+
+    <div class="site-shell">
+      <section id="login-screen" class="auth-shell">
+        <div class="hero-card glass">
+          <p class="eyebrow">شركة سماقية أخوان</p>
+          <h1>أهلًا بيك في شركة سماقية أخوان</h1>
+          <p class="lead">
+            بوابة العمل اليومية لفريق المبيعات والمتابعة والتنفيذ، مصممة لتكون سريعة وواضحة
+            ومريحة في الاستخدام من أول لحظة.
+          </p>
+
+          <div class="feature-pills">
+            <span>تنسيق يومي واضح</span>
+            <span>متابعة أسرع</span>
+            <span>واجهة مريحة</span>
+            <span>حركة عمل منظمة</span>
+            <span>تجربة استخدام أفضل</span>
+            <span>أداء سلس</span>
+          </div>
+        </div>
+
+        <form id="login-form" class="login-card glass">
+          <div class="card-head">
+            <p class="eyebrow">Secure Access</p>
+            <h2>تسجيل الدخول</h2>
+          </div>
+
+          <label class="field">
+            <span>البريد الإلكتروني</span>
+            <input id="login-email" type="email" placeholder="name@example.com" required />
+          </label>
+
+          <label class="field">
+            <span>كلمة المرور</span>
+            <input id="login-password" type="password" placeholder="••••••••" required />
+          </label>
+
+          <button id="login-submit" class="btn btn-primary" type="submit">دخول</button>
+          <div class="credit-marquee">
+            <div class="credit-track">
+              <span class="runner-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" role="img">
+                  <circle cx="45" cy="11" r="6"></circle>
+                  <path d="M38 21l8 4 7 6-4 4-7-5-5 8 8 6-3 5-10-6c-3-2-4-6-2-9l5-8-7 4-3-5 9-6c2-1 3-1 4-1z"></path>
+                  <path d="M27 46l7-8 5 3-7 10c-1 2-4 3-6 2l-11-4 2-5 10 2z"></path>
+                  <rect x="10" y="23" width="12" height="10" rx="2"></rect>
+                  <rect x="17" y="15" width="11" height="9" rx="2"></rect>
+                </svg>
+              </span>
+              <span class="credit-text">تم التطوير بواسطة مهندس محمد مجدي</span>
+            </div>
+          </div>
+          <p id="login-feedback" class="inline-feedback"></p>
+        </form>
+      </section>
+
+      <section id="app-screen" class="app-shell hidden">
+        <aside class="sidebar glass">
+          <div>
+            <div class="brand-block">
+              <p class="eyebrow">Portal</p>
+              <h2>Embrator Ops</h2>
+              <p id="user-email" class="muted"></p>
+            </div>
+
+            <nav class="menu">
+              <button class="menu-link active" data-screen="home">الرئيسية</button>
+              <button class="menu-link" data-screen="visit">تسجيل زيارة</button>
+              <button class="menu-link" data-screen="collection">تسجيل تحصيل</button>
+              <button class="menu-link" data-screen="orders-entry">تسجيل طلبية</button>
+              <button class="menu-link" data-screen="orders-browser">عرض الطلبيات</button>
+              <button class="menu-link" data-screen="customers">العملاء</button>
+              <button class="menu-link" data-screen="items">المنتجات</button>
+              <button class="menu-link" data-screen="dashboard">لوحة التحليلات</button>
+              <button class="menu-link" data-screen="field-analytics">تحليل الزيارات والتحصيلات</button>
+            </nav>
+          </div>
+
+          <button id="logout-button" class="btn btn-soft" type="button">تسجيل الخروج</button>
+        </aside>
+
+        <main class="workspace">
+          <header class="workspace-head glass">
+            <div>
+              <p class="eyebrow">Daily Workflow</p>
+              <h1 id="screen-title">الرئيسية</h1>
+            </div>
+            <div class="status-chip">
+              <span class="status-dot"></span>
+              <span>لوحة تشغيل ويب متصلة بقاعدة البيانات</span>
+            </div>
+          </header>
+
+          <section id="global-alert" class="global-alert hidden"></section>
+
+          <section class="glass page-section" data-page="home">
+            <div class="home-hero">
+              <div class="home-copy">
+                <p class="eyebrow">Operations Cockpit</p>
+                <h2>نظرة لحظية على حركة الفريق والطلبات والتحصيل</h2>
+                <p>
+                  لوحة بداية تركز على التنفيذ السريع، وتُظهر آخر النشاطات وحجم التشغيل
+                  وتفتح لك الطريق مباشرة إلى أهم المهام.
+                </p>
+              </div>
+              <div class="hero-stats" id="hero-stats"></div>
+            </div>
+
+            <div class="section-head">
+              <h2>الوصول السريع</h2>
+              <p>اختصر المهام اليومية من شاشة واحدة بدل التنقل بين أكثر من نظام.</p>
+            </div>
+
+            <div class="quick-grid quick-grid-home">
+              <button class="quick-card card-visit" data-jump="visit">
+                <strong>تسجيل زيارة</strong>
+                <span>توثيق الزيارة مع الموقع والعنوان العربي وبيانات العميل.</span>
+              </button>
+              <button class="quick-card card-collection" data-jump="collection">
+                <strong>تسجيل تحصيل</strong>
+                <span>تحصيل نقدي أو شيك أو تحويل مع ربطه بالموقع والعميل.</span>
+              </button>
+              <button class="quick-card card-orders" data-jump="orders-entry">
+                <strong>تسجيل طلبية</strong>
+                <span>فتح Draft وإضافة البنود ثم التأكيد مع حفظ تفاصيل العميل.</span>
+              </button>
+              <button class="quick-card card-browser" data-jump="orders-browser">
+                <strong>عرض الطلبيات</strong>
+                <span>عرض حسب المندوب والتاريخ مع صفحة تفاصيل منسقة لكل طلبية.</span>
+              </button>
+              <button class="quick-card card-customers" data-jump="customers">
+                <strong>العملاء</strong>
+                <span>إضافة عميل جديد، استعراض العملاء، وتعديل البيانات بسهولة.</span>
+              </button>
+              <button class="quick-card card-dashboard" data-jump="dashboard">
+                <strong>لوحة التحليلات</strong>
+                <span>مؤشرات أداء ورسوم بيانية بأسلوب قريب من لوحات Power BI.</span>
+              </button>
+            </div>
+
+            <div class="home-panels home-panels-three">
+              <section class="sub-card panel-tall">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>آخر الطلبات</h3>
+                    <p class="muted">لمراجعة أن الطلبات تتسجل وتتأكد بالفعل.</p>
+                  </div>
+                </div>
+                <div id="recent-orders" class="list-stack">
+                  <div class="empty-inline">لا توجد طلبات بعد</div>
+                </div>
+              </section>
+
+              <section class="sub-card panel-tall">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>أحدث التحصيلات</h3>
+                    <p class="muted">ملخص آخر الحركات المالية للفريق.</p>
+                  </div>
+                </div>
+                <div id="recent-collections" class="list-stack">
+                  <div class="empty-inline">لا توجد تحصيلات بعد</div>
+                </div>
+              </section>
+
+              <section class="sub-card panel-tall">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>مؤشرات سريعة</h3>
+                    <p class="muted">ملخص تنفيذي سريع قبل الدخول على الداشبورد الكاملة.</p>
+                  </div>
+                </div>
+                <div id="mini-insights" class="mini-insights"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="glass page-section hidden" data-page="visit">
+            <div class="section-head">
+              <h2>تسجيل زيارة</h2>
+              <p>اختر العميل ثم التقط موقع الزيارة ليتم حفظ العنوان العربي مع السجل.</p>
+            </div>
+
+            <form id="visit-form" class="stack-gap">
+              <div id="visit-filters" class="filters-grid"></div>
+              <div class="location-card">
+                <div>
+                  <h3>موقع الزيارة</h3>
+                  <p class="muted">استخدم GPS الحالي واستخراج العنوان بالعربية تلقائيًا.</p>
+                </div>
+                <button id="capture-visit-location" class="btn btn-soft" type="button">
+                  التقاط الموقع
+                </button>
+                <div id="visit-location-summary" class="location-summary"></div>
+              </div>
+              <div class="actions-row">
+                <button class="btn btn-primary" type="submit">حفظ الزيارة</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="glass page-section hidden" data-page="collection">
+            <div class="section-head">
+              <h2>تسجيل تحصيل</h2>
+              <p>سجل التحصيل واربطه بموقع التحصيل ونوع العملية والعميل.</p>
+            </div>
+
+            <form id="collection-form" class="stack-gap">
+              <div id="collection-filters" class="filters-grid"></div>
+              <div class="filters-grid">
+                <label class="field">
+                  <span>نوع التحصيل</span>
+                  <select id="collection-kind">
+                    <option value="نقدي">نقدي</option>
+                    <option value="شيك">شيك</option>
+                    <option value="تحويل">تحويل</option>
+                  </select>
+                </label>
+
+                <label id="transfer-kind-wrapper" class="field hidden">
+                  <span>نوع التحويل</span>
+                  <select id="transfer-kind">
+                    <option value="Instapay">Instapay</option>
+                    <option value="محفظة">محفظة</option>
+                    <option value="تحويل بنكي">تحويل بنكي</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>قيمة التحصيل</span>
+                  <input id="collection-amount" type="number" min="0" step="0.01" placeholder="0.00" />
+                </label>
+              </div>
+              <div id="cheque-fields-wrapper" class="filters-grid hidden">
+                <label class="field">
+                  <span>رقم الشيك</span>
+                  <input id="cheque-number" type="text" placeholder="أدخل رقم الشيك" />
+                </label>
+
+                <label class="field">
+                  <span>اسم البنك</span>
+                  <input id="cheque-bank-name" type="text" placeholder="أدخل اسم البنك" />
+                </label>
+
+                <label class="field">
+                  <span>تاريخ الاستحقاق</span>
+                  <input id="cheque-due-date" type="date" />
+                </label>
+
+                <label class="field field-span">
+                  <span>صورة الشيك</span>
+                  <input id="cheque-image" type="file" accept="image/*" capture="environment" />
+                </label>
+              </div>
+              <div class="location-card">
+                <div>
+                  <h3>موقع التحصيل</h3>
+                  <p class="muted">التقط العنوان الفعلي بالعربية ليسهل التتبع لاحقًا.</p>
+                </div>
+                <button id="capture-collection-location" class="btn btn-soft" type="button">
+                  التقاط الموقع
+                </button>
+                <div id="collection-location-summary" class="location-summary"></div>
+              </div>
+              <div class="actions-row">
+                <button class="btn btn-primary" type="submit">حفظ التحصيل</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="glass page-section hidden" data-page="orders-entry">
+            <div class="section-head">
+              <h2>تسجيل طلبية</h2>
+              <p>ابدأ بالعميل ثم التقط الموقع ثم أضف البنود، وبعدها أكّد الطلبية أو ألغها.</p>
+            </div>
+
+            <div class="order-overview">
+              <article class="overview-card accent-order">
+                <span>كود الطلبية</span>
+                <strong id="order-code-badge">لم يبدأ بعد</strong>
+              </article>
+              <article class="overview-card">
+                <span>عدد البنود</span>
+                <strong id="order-lines-count">0</strong>
+              </article>
+              <article class="overview-card">
+                <span>إجمالي الكمية</span>
+                <strong id="order-total-qty">0</strong>
+              </article>
+              <article class="overview-card">
+                <span>الحالة</span>
+                <strong id="order-status-badge">جاهزة</strong>
+              </article>
+            </div>
+
+            <div class="split-layout">
+              <div class="sub-card">
+                <h3>بيانات العميل</h3>
+                <div id="order-customer-filters" class="filters-grid"></div>
+                <div class="location-card compact">
+                  <div>
+                    <h3>موقع الطلبية</h3>
+                    <p class="muted">يتم حفظه مع الطلبية ويظهر في صفحة التفاصيل.</p>
+                  </div>
+                  <button id="capture-order-location" class="btn btn-soft" type="button">
+                    التقاط الموقع
+                  </button>
+                  <div id="order-location-summary" class="location-summary"></div>
+                </div>
+              </div>
+
+              <div class="sub-card">
+                <h3>إضافة بند جديد</h3>
+                <div class="filters-grid">
+                  <label class="field">
+                    <span>الموديل</span>
+                    <select id="order-model"></select>
+                  </label>
+
+                  <label class="field">
+                    <span>الصنف</span>
+                    <select id="order-item"></select>
+                  </label>
+
+                  <label class="field">
+                    <span>الكمية</span>
+                    <input id="order-qty" type="number" min="0" step="0.01" value="1" />
+                  </label>
+                </div>
+                <button id="add-order-line" class="btn btn-primary" type="button">إضافة البند</button>
+              </div>
+            </div>
+
+            <div id="order-complete-banner" class="completion-banner hidden"></div>
+
+            <div class="sub-card table-card">
+              <div class="card-inline-head">
+                <div>
+                  <h3>بنود الطلبية</h3>
+                  <p id="order-code-label" class="muted">لا توجد طلبية مفتوحة الآن</p>
+                </div>
+                <div class="actions-row">
+                  <button id="cancel-order" class="btn btn-soft" type="button">إلغاء الطلبية</button>
+                  <button id="confirm-order" class="btn btn-primary" type="button">تأكيد الطلبية</button>
+                </div>
+              </div>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>الصنف</th>
+                      <th>الوحدة</th>
+                      <th>الكمية</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="order-lines">
+                    <tr>
+                      <td colspan="4" class="empty-state">لا توجد بنود بعد</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section class="glass page-section hidden" data-page="orders-browser">
+            <div class="section-head">
+              <h2>عرض الطلبيات</h2>
+              <p>عرض ملخص حسب المندوب ثم قائمة الطلبات ثم صفحة تفاصيل كاملة لكل طلبية.</p>
+            </div>
+
+            <div id="orders-lock" class="lock-box">
+              <label class="field">
+                <span>كلمة مرور عرض الطلبيات</span>
+                <input id="orders-password" type="password" />
+              </label>
+              <button id="unlock-orders" class="btn btn-primary" type="button">فتح الشاشة</button>
+            </div>
+
+            <div id="orders-panel" class="hidden stack-gap">
+              <div class="filters-grid">
+                <label class="field">
+                  <span>المندوب</span>
+                  <select id="orders-rep-filter"></select>
+                </label>
+                <label class="field">
+                  <span>من تاريخ</span>
+                  <input id="orders-from" type="date" />
+                </label>
+                <label class="field">
+                  <span>إلى تاريخ</span>
+                  <input id="orders-to" type="date" />
+                </label>
+                <div class="field field-button">
+                  <span>&nbsp;</span>
+                  <button id="load-orders" class="btn btn-primary" type="button">تحميل الطلبيات</button>
+                </div>
+              </div>
+
+              <div class="summary-banner">
+                <div>
+                  <h3>إحصائيات الطلبيات حسب المندوب</h3>
+                  <p class="muted">اختر مندوبًا أو اعرض الكل، ثم افتح تفاصيل أي طلبية مباشرة.</p>
+                </div>
+              </div>
+
+              <div class="split-browser">
+                <div class="sub-card">
+                  <div class="card-inline-head">
+                    <div>
+                      <h3>ملخص حسب المندوب</h3>
+                      <p class="muted">اضغط عرض الطلبات لفلترة القائمة على هذا المندوب.</p>
+                    </div>
+                    <button id="show-all-orders" class="btn btn-soft" type="button">عرض الكل</button>
+                  </div>
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>اسم المندوب</th>
+                          <th>عدد الطلبات</th>
+                          <th>الإجراءات</th>
+                        </tr>
+                      </thead>
+                      <tbody id="orders-summary-table">
+                        <tr>
+                          <td colspan="3" class="empty-state">لم يتم تحميل البيانات بعد</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="sub-card">
+                  <div class="card-inline-head">
+                    <div>
+                      <h3>قائمة الطلبيات</h3>
+                      <p id="orders-list-caption" class="muted">قم بتحميل البيانات أولًا</p>
+                    </div>
+                  </div>
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>رقم الطلبية</th>
+                          <th>العميل</th>
+                          <th>التاريخ</th>
+                          <th>الحالة</th>
+                          <th>الإجراءات</th>
+                        </tr>
+                      </thead>
+                      <tbody id="orders-table">
+                        <tr>
+                          <td colspan="5" class="empty-state">لم يتم تحميل طلبيات بعد</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="glass page-section hidden" data-page="customers">
+            <div class="section-head">
+              <h2>إدارة العملاء</h2>
+              <p>إضافة عميل جديد، البحث داخل العملاء الحاليين، ثم التعديل والحفظ مباشرة.</p>
+            </div>
+
+            <div class="split-browser">
+              <form id="customer-form" class="sub-card stack-gap">
+                <div class="card-inline-head">
+                  <div>
+                    <h3 id="customer-form-title">عميل جديد</h3>
+                    <p class="muted">أدخل بيانات العميل ثم احفظها في قاعدة البيانات.</p>
+                  </div>
+                  <button id="customer-form-reset" class="btn btn-soft" type="button">مسح</button>
+                </div>
+                <div class="filters-grid">
+                  <label class="field">
+                    <span>الكود</span>
+                    <input id="customer-code" type="text" placeholder="C003" required />
+                  </label>
+                  <label class="field">
+                    <span>اسم العميل</span>
+                    <input id="customer-name" type="text" required />
+                  </label>
+                  <label class="field">
+                    <span>المندوب</span>
+                    <input id="customer-rep" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>التصنيف</span>
+                    <input id="customer-category" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>القطاع</span>
+                    <input id="customer-sector" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>المنطقة</span>
+                    <input id="customer-area" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>العنوان</span>
+                    <input id="customer-address" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>الموبايل</span>
+                    <input id="customer-phone" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>البريد الإلكتروني</span>
+                    <input id="customer-email" type="email" />
+                  </label>
+                  <label class="field inline-check">
+                    <span>الحالة</span>
+                    <select id="customer-active">
+                      <option value="true">نشط</option>
+                      <option value="false">غير نشط</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="actions-row">
+                  <button id="customer-submit" class="btn btn-primary" type="submit">حفظ العميل</button>
+                </div>
+              </form>
+
+              <div class="sub-card stack-gap">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>قائمة العملاء</h3>
+                    <p class="muted">ابحث بالاسم أو الكود، ثم اضغط تعديل لملء النموذج.</p>
+                  </div>
+                  <button id="refresh-customers" class="btn btn-soft" type="button">تحديث</button>
+                </div>
+                <label class="field">
+                  <span>بحث</span>
+                  <input id="customers-search" type="text" placeholder="ابحث باسم العميل أو الكود أو المندوب" />
+                </label>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>الكود</th>
+                        <th>العميل</th>
+                        <th>المندوب</th>
+                        <th>المنطقة</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody id="customers-table">
+                      <tr>
+                        <td colspan="6" class="empty-state">لا توجد بيانات بعد</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="glass page-section hidden" data-page="items">
+            <div class="section-head">
+              <h2>إدارة المنتجات</h2>
+              <p>أضف أو عدّل بيانات المنتجات والموديلات والوحدات والأسعار.</p>
+            </div>
+
+            <div class="split-browser">
+              <form id="item-form" class="sub-card stack-gap">
+                <div class="card-inline-head">
+                  <div>
+                    <h3 id="item-form-title">منتج جديد</h3>
+                    <p class="muted">إدخال المنتجات الجديدة أو تعديل الموجودة.</p>
+                  </div>
+                  <button id="item-form-reset" class="btn btn-soft" type="button">مسح</button>
+                </div>
+                <div class="filters-grid">
+                  <label class="field">
+                    <span>الكود</span>
+                    <input id="item-code" type="text" placeholder="I003" required />
+                  </label>
+                  <label class="field">
+                    <span>اسم المنتج</span>
+                    <input id="item-name" type="text" required />
+                  </label>
+                  <label class="field">
+                    <span>الموديل</span>
+                    <input id="item-model" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>الوحدة</span>
+                    <input id="item-unit" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>السعر</span>
+                    <input id="item-price" type="number" min="0" step="0.01" />
+                  </label>
+                  <label class="field inline-check">
+                    <span>الحالة</span>
+                    <select id="item-active">
+                      <option value="true">نشط</option>
+                      <option value="false">غير نشط</option>
+                    </select>
+                  </label>
+                  <label class="field field-span">
+                    <span>الوصف</span>
+                    <textarea id="item-description" rows="4"></textarea>
+                  </label>
+                </div>
+                <div class="actions-row">
+                  <button id="item-submit" class="btn btn-primary" type="submit">حفظ المنتج</button>
+                </div>
+              </form>
+
+              <div class="sub-card stack-gap">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>قائمة المنتجات</h3>
+                    <p class="muted">ابحث بالكود أو الاسم أو الموديل ثم عدّل ما تريد.</p>
+                  </div>
+                  <button id="refresh-items" class="btn btn-soft" type="button">تحديث</button>
+                </div>
+                <label class="field">
+                  <span>بحث</span>
+                  <input id="items-search" type="text" placeholder="ابحث باسم المنتج أو الكود أو الموديل" />
+                </label>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>الكود</th>
+                        <th>المنتج</th>
+                        <th>الموديل</th>
+                        <th>السعر</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody id="items-table">
+                      <tr>
+                        <td colspan="6" class="empty-state">لا توجد بيانات بعد</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="glass page-section hidden" data-page="dashboard">
+            <div class="section-head">
+              <h2>لوحة التحليلات</h2>
+              <p>لوحة متابعة تنفيذية بمؤشرات أداء ورسوم بيانية وملخصات تشغيلية.</p>
+            </div>
+
+            <div id="dashboard-lock" class="lock-box">
+              <label class="field">
+                <span>كلمة مرور لوحة التحليلات</span>
+                <input id="dashboard-password" type="password" />
+              </label>
+              <button id="unlock-dashboard" class="btn btn-primary" type="button">فتح اللوحة</button>
+            </div>
+
+            <div id="dashboard-panel" class="hidden stack-gap">
+              <div class="filters-grid">
+                <label class="field">
+                  <span>من تاريخ</span>
+                  <input id="dashboard-from" type="date" />
+                </label>
+                <label class="field">
+                  <span>إلى تاريخ</span>
+                  <input id="dashboard-to" type="date" />
+                </label>
+                <label class="field">
+                  <span>المندوب</span>
+                  <input id="dashboard-rep" type="text" placeholder="اختياري" />
+                </label>
+                <label class="field">
+                  <span>نوع التحصيل</span>
+                  <input id="dashboard-pay-kind" type="text" placeholder="اختياري" />
+                </label>
+                <div class="field field-button">
+                  <span>&nbsp;</span>
+                  <button id="load-dashboard" class="btn btn-primary" type="button">تحميل البيانات</button>
+                </div>
+              </div>
+
+              <div id="dashboard-metrics" class="metrics-grid metrics-grid-wide"></div>
+
+              <div class="dashboard-layout compact-dashboard">
+                <section class="sub-card chart-card chart-card-hero">
+                  <div class="card-inline-head">
+                    <div>
+                      <h3>الطلبات مقابل التحصيلات</h3>
+                      <p class="muted">مقارنة يومية بين النشاط التجاري والتحصيل المالي.</p>
+                    </div>
+                  </div>
+                  <canvas id="trend-chart" height="108"></canvas>
+                </section>
+
+                <section class="sub-card chart-card chart-card-donut">
+                  <div class="card-inline-head">
+                    <div>
+                      <h3>حالة الطلبيات</h3>
+                      <p class="muted">نسبة المؤكد مقابل Draft والملغي.</p>
+                    </div>
+                  </div>
+                  <canvas id="status-chart" height="108"></canvas>
+                </section>
+
+                <section class="sub-card chart-card chart-card-bar">
+                  <div class="card-inline-head">
+                    <div>
+                      <h3>أفضل المندوبين حسب عدد الطلبيات</h3>
+                      <p class="muted">ترتيب الأداء البيعي بحسب عدد الطلبات.</p>
+                    </div>
+                  </div>
+                  <canvas id="rep-orders-chart" height="108"></canvas>
+                </section>
+
+                <section class="sub-card chart-card chart-card-donut">
+                  <div class="card-inline-head">
+                    <div>
+                      <h3>توزيع التحصيل حسب النوع</h3>
+                      <p class="muted">نقدي، شيك، وتحويلات.</p>
+                    </div>
+                  </div>
+                  <canvas id="collection-type-chart" height="108"></canvas>
+                </section>
+              </div>
+
+              <div class="dashboard-layout bottom">
+                <section class="sub-card">
+                  <div class="card-inline-head">
+                    <div>
+                      <h3>أفضل العملاء</h3>
+                      <p class="muted">الأكثر نشاطًا في الطلبيات خلال الفترة المختارة.</p>
+                    </div>
+                  </div>
+                  <div id="top-customers-list" class="list-stack"></div>
+                </section>
+
+                <section class="sub-card">
+                  <div class="card-inline-head">
+                    <div>
+                      <h3>أفضل المنتجات</h3>
+                      <p class="muted">الأكثر طلبًا بحسب إجمالي الكمية.</p>
+                    </div>
+                  </div>
+                  <div id="top-items-list" class="list-stack"></div>
+                </section>
+
+                <section class="sub-card">
+                  <div class="card-inline-head">
+                    <div>
+                      <h3>آخر الأنشطة</h3>
+                      <p class="muted">آخر طلبيات وتحويلات لسرعة المتابعة.</p>
+                    </div>
+                  </div>
+                  <div id="latest-activity-list" class="list-stack"></div>
+                </section>
+              </div>
+            </div>
+          </section>
+
+          <section class="glass page-section hidden" data-page="field-analytics">
+            <div class="section-head">
+              <h2>تحليل الزيارات والتحصيلات</h2>
+              <p>شاشة مستقلة لمتابعة النشاط الميداني والتحصيل المالي بمؤشرات ورسوم أبسط وأوضح.</p>
+            </div>
+
+            <div class="filters-grid">
+              <label class="field">
+                <span>من تاريخ</span>
+                <input id="field-from" type="date" />
+              </label>
+              <label class="field">
+                <span>إلى تاريخ</span>
+                <input id="field-to" type="date" />
+              </label>
+              <label class="field">
+                <span>المندوب</span>
+                <input id="field-rep" type="text" placeholder="اختياري" />
+              </label>
+              <label class="field">
+                <span>نوع التحصيل</span>
+                <input id="field-pay-kind" type="text" placeholder="اختياري" />
+              </label>
+              <div class="field field-button">
+                <span>&nbsp;</span>
+                <button id="load-field-analytics" class="btn btn-primary" type="button">تحميل التحليل</button>
+              </div>
+            </div>
+
+            <div id="field-metrics" class="metrics-grid metrics-grid-wide"></div>
+
+            <div class="dashboard-layout field-layout">
+              <section class="sub-card chart-card chart-card-hero">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>التحصيل اليومي</h3>
+                    <p class="muted">قيمة التحصيل حسب اليوم داخل الفترة المختارة.</p>
+                  </div>
+                </div>
+                <canvas id="field-collections-chart" height="116"></canvas>
+              </section>
+
+              <section class="sub-card chart-card chart-card-bar">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>التحصيل حسب المندوب</h3>
+                    <p class="muted">من الأكثر تحقيقًا للتحصيل.</p>
+                  </div>
+                </div>
+                <canvas id="field-rep-collections-chart" height="116"></canvas>
+              </section>
+            </div>
+
+            <div class="dashboard-layout bottom">
+              <section class="sub-card field-table-span">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>جدول التحركات والتحصيلات</h3>
+                    <p class="muted">يعرض اليوم والوقت والعميل وقيمة التحصيل، والزيارة بقيمة 0 تلقائيًا.</p>
+                  </div>
+                  <button id="export-field-movements" class="btn btn-soft" type="button">تصدير Excel</button>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>المندوب</th>
+                        <th>اليوم</th>
+                        <th>الوقت</th>
+                        <th>اسم العميل</th>
+                        <th>النوع</th>
+                        <th>قيمة التحصيل</th>
+                        <th>رقم الشيك</th>
+                        <th>اسم البنك</th>
+                        <th>تاريخ الاستحقاق</th>
+                        <th>صورة الشيك</th>
+                      </tr>
+                    </thead>
+                    <tbody id="field-movements-table">
+                      <tr>
+                        <td colspan="10" class="empty-state">لا توجد بيانات بعد</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="table-pager">
+                  <button id="field-prev-page" class="btn btn-soft" type="button">السابق</button>
+                  <span id="field-page-indicator" class="muted">صفحة 1</span>
+                  <button id="field-next-page" class="btn btn-soft" type="button">التالي</button>
+                </div>
+              </section>
+
+              <section class="sub-card">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>ملخص ميداني</h3>
+                    <p class="muted">ملخص رقمي سريع للزيارات والتحصيلات.</p>
+                  </div>
+                </div>
+                <div id="field-insights-list" class="list-stack"></div>
+              </section>
+
+              <section class="sub-card">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>أنواع التحصيل</h3>
+                    <p class="muted">أي وسائل التحصيل أكثر استخدامًا.</p>
+                  </div>
+                </div>
+                <div id="field-types-list" class="list-stack"></div>
+              </section>
+
+              <section class="sub-card">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>آخر التحصيلات</h3>
+                    <p class="muted">لمتابعة أحدث الحركات المالية في الميدان.</p>
+                  </div>
+                </div>
+                <div id="field-latest-list" class="list-stack"></div>
+              </section>
+            </div>
+          </section>
+        </main>
+      </section>
+    </div>
+
+    <dialog id="details-dialog" class="details-dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Order Details</p>
+          <h3 id="details-title">تفاصيل الطلبية</h3>
+        </div>
+        <button id="close-dialog" class="icon-button" type="button">×</button>
+      </div>
+      <div id="order-details-content" class="order-details-content"></div>
+    </dialog>
+
+    <dialog id="cheque-image-dialog" class="details-dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Cheque Preview</p>
+          <h3>صورة الشيك</h3>
+        </div>
+        <button id="close-cheque-dialog" class="icon-button" type="button">×</button>
+      </div>
+      <div class="order-details-content">
+        <img id="cheque-preview-image" class="cheque-preview-image" alt="صورة الشيك" />
+      </div>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="./src/config.js"></script>
+    <script src="./src/app.js"></script>
+  </body>
+</html>
