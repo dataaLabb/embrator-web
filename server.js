@@ -9,12 +9,33 @@ dotenv.config();
 const app = express();
 const port = Number(process.env.PORT || 3000);
 const jwtSecret = process.env.JWT_SECRET || "change-me";
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
+const databaseUrl = String(process.env.DATABASE_URL || "").trim();
+
+function buildPgConfig() {
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is missing.");
   }
-});
+
+  let parsed;
+  try {
+    parsed = new URL(databaseUrl);
+  } catch (error) {
+    throw new Error(`DATABASE_URL is invalid: ${error.message}`);
+  }
+
+  return {
+    host: parsed.hostname,
+    port: Number(parsed.port || 5432),
+    database: decodeURIComponent(parsed.pathname.replace(/^\//, "") || "postgres"),
+    user: decodeURIComponent(parsed.username || ""),
+    password: decodeURIComponent(parsed.password || ""),
+    ssl: {
+      rejectUnauthorized: false
+    }
+  };
+}
+
+const pool = new Pool(buildPgConfig());
 
 app.use(express.json({ limit: "15mb" }));
 app.use(express.static(__dirname));
