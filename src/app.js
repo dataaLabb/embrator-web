@@ -18,14 +18,17 @@
     orderFilters: emptyFilters(),
     orderDraft: { id: "", code: "", lines: [] },
     ordersUnlocked: false,
+    ordersScreenToken: "",
     dashboardUnlocked: false,
     ordersList: [],
     ordersSummary: [],
     ordersRepFilter: "",
     dashboardPayload: null,
+    dashboardChartView: "trend",
     fieldAnalyticsPayload: null,
     fieldMovementsPayload: null,
     fieldMovementsPage: 1,
+    fieldFilters: null,
     homeSummary: null,
     lastCompletedOrder: null,
     locations: {
@@ -179,11 +182,18 @@
     ui.topCustomersList = document.getElementById("top-customers-list");
     ui.topItemsList = document.getElementById("top-items-list");
     ui.latestActivityList = document.getElementById("latest-activity-list");
+    ui.dashboardChartButtons = Array.from(document.querySelectorAll("[data-dashboard-chart]"));
 
     ui.trendChart = document.getElementById("trend-chart");
     ui.statusChart = document.getElementById("status-chart");
     ui.repOrdersChart = document.getElementById("rep-orders-chart");
     ui.collectionTypeChart = document.getElementById("collection-type-chart");
+    ui.dashboardChartCards = {
+      trend: ui.trendChart ? ui.trendChart.closest(".sub-card") : null,
+      status: ui.statusChart ? ui.statusChart.closest(".sub-card") : null,
+      rep: ui.repOrdersChart ? ui.repOrdersChart.closest(".sub-card") : null,
+      collectionType: ui.collectionTypeChart ? ui.collectionTypeChart.closest(".sub-card") : null
+    };
 
     ui.fieldFrom = document.getElementById("field-from");
     ui.fieldTo = document.getElementById("field-to");
@@ -269,12 +279,17 @@
 
     ui.unlockDashboard.addEventListener("click", onUnlockDashboard);
     ui.loadDashboard.addEventListener("click", onLoadDashboard);
-    ui.loadFieldAnalytics.addEventListener("click", onLoadFieldAnalytics);
-    ui.fieldPrevPage.addEventListener("click", function () {
-      changeFieldMovementsPage(-1);
+    ui.dashboardChartButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        setDashboardChartView(button.dataset.dashboardChart || "trend");
+      });
     });
-    ui.fieldNextPage.addEventListener("click", function () {
-      changeFieldMovementsPage(1);
+    ui.loadFieldAnalytics.addEventListener("click", onLoadFieldAnalytics);
+    ui.fieldPrevPage.addEventListener("click", async function () {
+      await changeFieldMovementsPage(-1);
+    });
+    ui.fieldNextPage.addEventListener("click", async function () {
+      await changeFieldMovementsPage(1);
     });
     ui.exportFieldMovements.addEventListener("click", exportFieldMovementsExcel);
 
@@ -315,6 +330,7 @@
     renderLocationSummary("order");
     renderDashboard(state.dashboardPayload);
     renderFieldAnalytics(state.fieldAnalyticsPayload, state.fieldMovementsPayload);
+    setDashboardChartView(state.dashboardChartView);
     syncTransferField();
     setPage(state.currentPage);
   }
@@ -374,6 +390,7 @@
     state.orderFilters = emptyFilters();
     state.orderDraft = { id: "", code: "", lines: [] };
     state.ordersUnlocked = false;
+    state.ordersScreenToken = "";
     state.dashboardUnlocked = false;
     state.ordersList = [];
     state.ordersSummary = [];
@@ -900,10 +917,11 @@
   async function onUnlockOrders() {
     setBusy(ui.unlockOrders, true, "جارٍ التحقق...");
     try {
-      await apiRequest("/api/screen-access", {
+      const result = await apiRequest("/api/screen-access", {
         method: "POST",
         body: { scope: "orders", password: ui.ordersPassword.value }
       });
+      state.ordersScreenToken = result.screenToken || "";
       state.ordersUnlocked = true;
       ui.ordersLock.classList.add("hidden");
       ui.ordersPanel.classList.remove("hidden");
@@ -934,7 +952,7 @@
     if (ui.ordersTo.value) params.set("to", ui.ordersTo.value);
     if (state.ordersRepFilter) params.set("rep", state.ordersRepFilter);
     const suffix = params.toString() ? "?" + params.toString() : "";
-    const result = await apiRequest("/api/orders" + suffix);
+    const result = await apiRequest("/api/orders" + suffix, {}, { "x-screen-token": state.ordersScreenToken });
     state.ordersList = result.orders || [];
     state.ordersSummary = result.summaryByRep || [];
     renderOrdersSummaryTable();
@@ -1013,7 +1031,7 @@
 
   async function showOrderDetails(orderCode) {
     try {
-      const result = await apiRequest("/api/orders/" + encodeURIComponent(orderCode));
+      const result = await apiRequest("/api/orders/" + encodeURIComponent(orderCode), {}, { "x-screen-token": state.ordersScreenToken });
       renderOrderDetailsDialog(result.order, result.lines || []);
       ui.detailsDialog.showModal();
     } catch (error) {
@@ -1077,8 +1095,8 @@
             order.lat && order.lng ? `${order.lat}, ${order.lng}` : "غير متوفر"
           )}</p>
           ${
-            order.map_url
-              ? `<a class="map-link" href="${escapeHtml(order.map_url)}" target="_blank" rel="noreferrer">عرض على الخريطة</a>`
+            safeHref(order.map_url)
+              ? `<a class="map-link" href="${escapeHtml(safeHref(order.map_url))}" target="_blank" rel="noreferrer">عرض على الخريطة</a>`
               : `<span class="muted">لا يوجد رابط خريطة</span>`
           }
         </div>
@@ -1380,6 +1398,7 @@
         rep: ui.fieldRep.value.trim() || null,
         payKind: ui.fieldPayKind.value.trim() || null
       };
+      state.fieldFilters = body;
       const [analytics, movements] = await Promise.all([
         apiRequest("/api/dashboard", {
           method: "POST",
@@ -1387,7 +1406,7 @@
         }),
         apiRequest("/api/field-movements", {
           method: "POST",
-          body
+          body: Object.assign({ page: 1, pageSize: 10 }, body)
         })
       ]);
       state.fieldAnalyticsPayload = analytics;
@@ -1399,6 +1418,22 @@
       notify(error.message || "تعذر تحميل التحليل.", "error");
     } finally {
       setBusy(ui.loadFieldAnalytics, false, "تحميل التحليل");
+    }
+  }
+
+  function setDashboardChartView(view, skipRender) {
+    state.dashboardChartView = view || "trend";
+    ui.dashboardChartButtons.forEach((button) => {
+      button.classList.toggle("active", button.dataset.dashboardChart === state.dashboardChartView);
+    });
+    Object.keys(ui.dashboardChartCards).forEach((key) => {
+      const card = ui.dashboardChartCards[key];
+      if (card) {
+        card.classList.toggle("hidden", key !== state.dashboardChartView);
+      }
+    });
+    if (state.dashboardPayload && !skipRender) {
+      renderCharts(state.dashboardPayload);
     }
   }
 
@@ -1427,6 +1462,7 @@
     ui.topItemsList.innerHTML = renderScoreList(payload.topItems, "كمية");
     ui.latestActivityList.innerHTML = renderLatestActivity(payload.latestOrders, payload.latestCollections);
 
+    setDashboardChartView(state.dashboardChartView, true);
     renderCharts(payload);
   }
 
@@ -1464,7 +1500,7 @@
 
     ui.fieldTypesList.innerHTML = renderScoreList(payload.collectionsByType, "عملية");
     ui.fieldLatestList.innerHTML = renderLatestCollectionList(payload.latestCollections);
-    renderMovementsTable((movementsPayload && movementsPayload.movementRows) || []);
+      renderMovementsTable(movementsPayload || null);
     renderFieldCharts(payload);
   }
 
@@ -1574,61 +1610,73 @@
       return;
     }
 
-    state.charts.trend = new window.Chart(ui.trendChart, {
-      type: "line",
-      data: {
-        labels: uniqueTimeline(payload.dailyOrders, payload.dailyCollections),
-        datasets: [
-          {
-            label: "الطلبيات",
-            data: mapSeries(uniqueTimeline(payload.dailyOrders, payload.dailyCollections), payload.dailyOrders),
-            borderColor: "#0d4f8b",
-            backgroundColor: "rgba(13, 79, 139, 0.16)",
-            tension: 0.35,
-            fill: true
-          },
-          {
-            label: "التحصيلات",
-            data: mapSeries(uniqueTimeline(payload.dailyOrders, payload.dailyCollections), payload.dailyCollections),
-            borderColor: "#1b8c7a",
-            backgroundColor: "rgba(27, 140, 122, 0.14)",
-            tension: 0.35,
-            fill: true
-          }
-        ]
-      },
-      options: chartOptions()
-    });
+    const activeView = state.dashboardChartView || "trend";
+    const timeline = uniqueTimeline(payload.dailyOrders, payload.dailyCollections);
 
-    state.charts.status = new window.Chart(ui.statusChart, {
-      type: "doughnut",
-      data: {
-        labels: payload.statusBreakdown.map((row) => row.label),
-        datasets: [
-          {
-            data: payload.statusBreakdown.map((row) => row.total),
-            backgroundColor: ["#1f7a4d", "#a64c28", "#a33141"]
-          }
-        ]
-      },
-      options: chartOptions({ cutout: "68%" })
-    });
+    if (activeView === "trend") {
+      state.charts.trend = new window.Chart(ui.trendChart, {
+        type: "line",
+        data: {
+          labels: timeline,
+          datasets: [
+            {
+              label: "الطلبيات",
+              data: mapSeries(timeline, payload.dailyOrders),
+              borderColor: "#0d4f8b",
+              backgroundColor: "rgba(13, 79, 139, 0.16)",
+              tension: 0.35,
+              fill: true
+            },
+            {
+              label: "التحصيلات",
+              data: mapSeries(timeline, payload.dailyCollections),
+              borderColor: "#1b8c7a",
+              backgroundColor: "rgba(27, 140, 122, 0.14)",
+              tension: 0.35,
+              fill: true
+            }
+          ]
+        },
+        options: chartOptions()
+      });
+      return;
+    }
 
-    state.charts.rep = new window.Chart(ui.repOrdersChart, {
-      type: "bar",
-      data: {
-        labels: (payload.ordersByRep || []).map((row) => row.rep || "غير محدد"),
-        datasets: [
-          {
-            label: "عدد الطلبيات",
-            data: (payload.ordersByRep || []).map((row) => row.total),
-            backgroundColor: "#a64c28",
-            borderRadius: 12
-          }
-        ]
-      },
-      options: chartOptions({ indexAxis: "y" })
-    });
+    if (activeView === "status") {
+      state.charts.status = new window.Chart(ui.statusChart, {
+        type: "doughnut",
+        data: {
+          labels: (payload.statusBreakdown || []).map((row) => row.label),
+          datasets: [
+            {
+              data: (payload.statusBreakdown || []).map((row) => row.total),
+              backgroundColor: ["#1f7a4d", "#a64c28", "#a33141"]
+            }
+          ]
+        },
+        options: chartOptions({ cutout: "68%" })
+      });
+      return;
+    }
+
+    if (activeView === "rep") {
+      state.charts.rep = new window.Chart(ui.repOrdersChart, {
+        type: "bar",
+        data: {
+          labels: (payload.ordersByRep || []).map((row) => row.rep || "غير محدد"),
+          datasets: [
+            {
+              label: "عدد الطلبيات",
+              data: (payload.ordersByRep || []).map((row) => row.total),
+              backgroundColor: "#a64c28",
+              borderRadius: 12
+            }
+          ]
+        },
+        options: chartOptions({ indexAxis: "y" })
+      });
+      return;
+    }
 
     state.charts.collectionType = new window.Chart(ui.collectionTypeChart, {
       type: "pie",
@@ -1685,8 +1733,12 @@
     });
   }
 
-  function renderMovementsTable(rows) {
-    if (!rows || !rows.length) {
+  function renderMovementsTable(payload) {
+    const rows = (payload && payload.movementRows) || [];
+    const currentPage = (payload && payload.currentPage) || 1;
+    const totalPages = (payload && payload.totalPages) || 0;
+
+    if (!rows.length) {
       ui.fieldMovementsTable.innerHTML = `<tr><td colspan="10" class="empty-state">لا توجد تحركات مطابقة</td></tr>`;
       ui.fieldPageIndicator.textContent = "صفحة 0 من 0";
       ui.fieldPrevPage.disabled = true;
@@ -1694,15 +1746,7 @@
       return;
     }
 
-    const pageSize = 10;
-    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-    if (state.fieldMovementsPage > totalPages) {
-      state.fieldMovementsPage = totalPages;
-    }
-    const start = (state.fieldMovementsPage - 1) * pageSize;
-    const pageRows = rows.slice(start, start + pageSize);
-
-    ui.fieldMovementsTable.innerHTML = pageRows
+    ui.fieldMovementsTable.innerHTML = rows
       .map((row) => {
         const day = formatDay(row.created_at);
         const time = formatTime(row.created_at);
@@ -1741,27 +1785,56 @@
       });
     });
 
-    ui.fieldPageIndicator.textContent = `صفحة ${state.fieldMovementsPage} من ${totalPages}`;
-    ui.fieldPrevPage.disabled = state.fieldMovementsPage <= 1;
-    ui.fieldNextPage.disabled = state.fieldMovementsPage >= totalPages;
+    ui.fieldPageIndicator.textContent = `صفحة ${currentPage} من ${totalPages}`;
+    ui.fieldPrevPage.disabled = currentPage <= 1;
+    ui.fieldNextPage.disabled = currentPage >= totalPages;
   }
 
-  function changeFieldMovementsPage(step) {
-    const rows = (state.fieldMovementsPayload && state.fieldMovementsPayload.movementRows) || [];
-    if (!rows.length) {
+  async function changeFieldMovementsPage(step) {
+    const currentPayload = state.fieldMovementsPayload;
+    if (!currentPayload || !(currentPayload.totalPages > 1)) {
       return;
     }
-    const totalPages = Math.max(1, Math.ceil(rows.length / 10));
-    const nextPage = state.fieldMovementsPage + step;
-    if (nextPage < 1 || nextPage > totalPages) {
+
+    const nextPage = (currentPayload.currentPage || 1) + step;
+    if (nextPage < 1 || nextPage > (currentPayload.totalPages || 1)) {
       return;
     }
-    state.fieldMovementsPage = nextPage;
-    renderMovementsTable(rows);
+
+    try {
+      ui.fieldPrevPage.disabled = true;
+      ui.fieldNextPage.disabled = true;
+      const nextPayload = await apiRequest("/api/field-movements", {
+        method: "POST",
+        body: Object.assign({ page: nextPage, pageSize: currentPayload.pageSize || 10 }, state.fieldFilters || {})
+      });
+      state.fieldMovementsPayload = nextPayload;
+      state.fieldMovementsPage = nextPayload.currentPage || nextPage;
+      renderMovementsTable(nextPayload);
+    } catch (error) {
+      notify(error.message || "تعذر تحميل باقي البيانات.", "error");
+      renderMovementsTable(currentPayload);
+    }
   }
 
-  function exportFieldMovementsExcel() {
-    const rows = (state.fieldMovementsPayload && state.fieldMovementsPayload.movementRows) || [];
+  async function exportFieldMovementsExcel() {
+    const currentPayload = state.fieldMovementsPayload;
+    if (!currentPayload || !(currentPayload.totalCount > 0)) {
+      notify("لا توجد بيانات لتصديرها.", "error");
+      return;
+    }
+
+    let rows = currentPayload.movementRows || [];
+    try {
+      const exportPayload = await apiRequest("/api/field-movements", {
+        method: "POST",
+        body: Object.assign({ exportAll: true, pageSize: 50000 }, state.fieldFilters || {})
+      });
+      rows = exportPayload.movementRows || [];
+    } catch (error) {
+      notify("تم الاعتماد على الصفحة الحالية فقط في التصدير.", "info");
+    }
+
     if (!rows.length) {
       notify("لا توجد بيانات لتصديرها.", "error");
       return;
@@ -1802,32 +1875,6 @@
     } catch (error) {
       notify(error.message || "تعذر تصدير الملف.", "error");
     }
-  }
-
-  function downloadCsvFallback(rows, filename) {
-    const headers = Object.keys(rows[0] || {});
-    const lines = [
-      headers.join(","),
-      ...rows.map((row) =>
-        headers
-          .map((header) => {
-            const value = String(row[header] ?? "");
-            return `"${value.replaceAll('"', '""')}"`;
-          })
-          .join(",")
-      )
-    ];
-    const blob = new Blob(["\uFEFF" + lines.join("\n")], {
-      type: "text/csv;charset=utf-8;"
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   }
 
   function renderChequeImageCell(movement) {
@@ -1949,7 +1996,7 @@
         `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}`
       )}</span></div>
       <div class="location-line"><strong>العنوان:</strong> <span>${escapeHtml(loc.arabicAddress || "غير متوفر")}</span></div>
-      <div class="location-line"><a class="map-link" href="${escapeHtml(loc.mapUrl)}" target="_blank" rel="noreferrer">فتح على الخريطة</a></div>
+      ${safeHref(loc.mapUrl) ? `<div class="location-line"><a class="map-link" href="${escapeHtml(safeHref(loc.mapUrl))}" target="_blank" rel="noreferrer">فتح على الخريطة</a></div>` : ""}
     `;
   }
 
@@ -2001,13 +2048,14 @@
     return error.message || "تعذر تحديد الموقع.";
   }
 
-  async function apiRequest(path, options) {
+  async function apiRequest(path, options, extraHeaders) {
     const opts = options || {};
     const response = await fetch(apiBaseUrl + path, {
       method: opts.method || "GET",
       headers: Object.assign(
         { "Content-Type": "application/json" },
-        state.token ? { Authorization: "Bearer " + state.token } : {}
+        state.token ? { Authorization: "Bearer " + state.token } : {},
+        extraHeaders || {}
       ),
       body: opts.body ? JSON.stringify(opts.body) : undefined
     });
@@ -2015,6 +2063,11 @@
     const text = await response.text();
     const data = safeJson(text);
     if (!response.ok) {
+      if (response.status === 401) {
+        clearSession();
+        reflectSession();
+        throw new Error("انتهت صلاحية الجلسة. يرجى تسجيل الدخول مجددًا.");
+      }
       throw new Error((data && data.message) || "حدث خطأ في الطلب.");
     }
     return data;
@@ -2246,5 +2299,10 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
+  }
+
+  function safeHref(url) {
+    const s = String(url || "").trim();
+    return s.startsWith("https://") || s.startsWith("http://") ? s : null;
   }
 })();

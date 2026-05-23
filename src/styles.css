@@ -772,6 +772,44 @@ textarea:focus {
   gap: 16px;
 }
 
+.analytics-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.segmented-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  background: rgba(255, 251, 244, 0.92);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 28px rgba(90, 54, 22, 0.08);
+}
+
+.segmented-btn {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.segmented-btn.active {
+  background: linear-gradient(135deg, var(--primary), #c96a2d);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(166, 76, 40, 0.22);
+}
+
 .split-layout {
   grid-template-columns: 1.1fr 0.9fr;
 }
