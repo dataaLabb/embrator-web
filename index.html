@@ -833,6 +833,57 @@
               </div>
             </div>
 
+            <section class="production-hero-board">
+              <div class="production-total-card">
+                <div class="production-total-meta">
+                  <span class="eyebrow">Production Overview</span>
+                  <h3 id="production-headline-title">إنتاج مجموعة سماقية إخوان</h3>
+                  <p id="production-headline-caption" class="muted">اللوحة الرئيسية تعرض الإجماليات بالدستة والتدفق حسب كل شيت.</p>
+                </div>
+                <div id="production-overall-total" class="production-total-value">--</div>
+              </div>
+
+              <div id="production-source-tabs" class="segmented-control production-source-tabs">
+                <button class="segmented-btn active" type="button" data-production-source="">الرئيسية</button>
+                <button class="segmented-btn" type="button" data-production-source="الجاهز">الجاهز</button>
+                <button class="segmented-btn" type="button" data-production-source="داخلي">الداخلي</button>
+                <button class="segmented-btn" type="button" data-production-source="وينكز">وينكز</button>
+              </div>
+
+              <div id="production-overview-board" class="production-overview-board"></div>
+            </section>
+
+            <div class="filters-grid production-filter-grid">
+              <label class="field">
+                <span>اسم الخط</span>
+                <select id="production-line-filter">
+                  <option value="">الكل</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>اللون</span>
+                <select id="production-color-filter">
+                  <option value="">الكل</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>المقاس</span>
+                <select id="production-size-filter">
+                  <option value="">الكل</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>الشهر</span>
+                <select id="production-month-filter">
+                  <option value="">الكل</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>بحث بالموديل</span>
+                <input id="production-model-filter" type="text" placeholder="مثال: 3538" />
+              </label>
+            </div>
+
             <div id="production-metrics" class="metrics-grid metrics-grid-wide"></div>
 
             <div class="dashboard-layout field-layout production-layout">
@@ -886,6 +937,38 @@
                   </div>
                 </div>
                 <div id="production-destinations-list" class="list-stack"></div>
+              </section>
+            </div>
+
+            <div class="dashboard-layout bottom production-bottom production-bottom-secondary">
+              <section class="sub-card">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>أفضل الموديلات</h3>
+                    <p class="muted">مقارنة الموديلات تعتمد على الكمية بالدستة.</p>
+                  </div>
+                </div>
+                <div id="production-models-list" class="list-stack"></div>
+              </section>
+
+              <section class="sub-card">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>أفضل المقاسات</h3>
+                    <p class="muted">المقاسات الأعلى مساهمة داخل التبويب الحالي.</p>
+                  </div>
+                </div>
+                <div id="production-sizes-list" class="list-stack"></div>
+              </section>
+
+              <section class="sub-card">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>أفضل الألوان</h3>
+                    <p class="muted">الألوان الأكثر تأثيرًا في الإنتاج بالدستة.</p>
+                  </div>
+                </div>
+                <div id="production-colors-list" class="list-stack"></div>
               </section>
             </div>
 

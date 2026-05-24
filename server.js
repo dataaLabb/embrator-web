@@ -285,6 +285,18 @@ function normalizeHeader(value) {
     .replace(/\s+/g, " ");
 }
 
+function normalizeArabicToken(value) {
+  return normalizeHeader(value)
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/[()]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 function toNumber(value) {
   const num = Number(String(value || "").replace(/,/g, "").trim());
   return Number.isFinite(num) ? num : 0;
@@ -317,21 +329,25 @@ async function fetchProductionSheetRows(sheet) {
   const csv = await response.text();
   const rows = parseCsvRows(csv);
   const headers = (rows.shift() || []).map(normalizeHeader);
-  const indexOf = (name) => headers.findIndex((header) => header === name);
+  const normalizedHeaders = headers.map(normalizeArabicToken);
+  const indexOfAny = (names) => {
+    const targets = names.map(normalizeArabicToken);
+    return normalizedHeaders.findIndex((header) => targets.includes(header));
+  };
 
   const indexes = {
-    lineNumber: indexOf("رقم الخط"),
-    lineName: indexOf("اسم الخط"),
-    date: indexOf("التاريخ"),
-    storyNo: indexOf("رقم القصة"),
-    modelCode: indexOf("كود الموديل"),
-    workOrder: indexOf("امر الشغل (د)"),
-    itemName: indexOf("الصنف"),
-    size: indexOf("المقاس"),
-    color: indexOf("اللون"),
-    quantity: indexOf("الكمية"),
-    dozens: indexOf("الكمية بالدستة"),
-    destination: indexOf("موجه الي")
+    lineNumber: indexOfAny(["رقم الخط"]),
+    lineName: indexOfAny(["اسم الخط"]),
+    date: indexOfAny(["التاريخ"]),
+    storyNo: indexOfAny(["رقم القصة", "رقم القصه"]),
+    modelCode: indexOfAny(["كود الموديل", "كود المويل", "كو المويل"]),
+    workOrder: indexOfAny(["امر الشغل (د)", "امر الشغل ()"]),
+    itemName: indexOfAny(["الصنف"]),
+    size: indexOfAny(["المقاس"]),
+    color: indexOfAny(["اللون"]),
+    quantity: indexOfAny(["الكمية", "الكميه"]),
+    dozens: indexOfAny(["الكمية بالدستة", "الكمية بالستة", "الكميه بالسته"]),
+    destination: indexOfAny(["موجه الي"])
   };
 
   return rows.map((row) => ({
@@ -1061,6 +1077,138 @@ app.post("/api/field-movements", authRequired, async (req, res) => {
           due_date: r.due_date, has_cheque_image: Boolean(r.has_cheque_image),
           lat: r.lat, lng: r.lng, arabic_address: r.arabic_address, map_url: r.map_url
         }))
+      };
+    });
+
+    res.json(payload);
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
+app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
+  try {
+    const payload = await withAnalyticsCache("production-dashboard-v2", req.body || {}, async () => {
+      const from = String(req.body.from || "").trim();
+      const to = String(req.body.to || "").trim();
+      const source = String(req.body.source || "").trim();
+      const line = String(req.body.line || "").trim();
+      const color = String(req.body.color || "").trim();
+      const size = String(req.body.size || "").trim();
+      const month = String(req.body.month || "").trim();
+      const model = String(req.body.model || "").trim();
+      const rows = await getProductionRows();
+
+      const dateScoped = rows.filter((row) => {
+        if (from && row.date && row.date < from) return false;
+        if (to && row.date && row.date > to) return false;
+        return true;
+      });
+
+      const sourceScoped = dateScoped.filter((row) => {
+        if (source && source !== "الكل" && row.source !== source) return false;
+        return true;
+      });
+
+      const filtered = sourceScoped.filter((row) => {
+        if (line && row.lineName !== line) return false;
+        if (color && row.color !== color) return false;
+        if (size && row.size !== size) return false;
+        if (month && String(row.date || "").slice(0, 7) !== month) return false;
+        if (model && !String(row.modelCode || "").includes(model)) return false;
+        return true;
+      });
+
+      const totalQuantity = filtered.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+      const totalDozens = filtered.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
+      const overallTotalQuantity = dateScoped.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+      const overallTotalDozens = dateScoped.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
+
+      const monthlyDozensMap = new Map();
+      filtered.forEach((row) => {
+        if (!row.date) return;
+        const key = String(row.date).slice(0, 7);
+        monthlyDozensMap.set(key, (monthlyDozensMap.get(key) || 0) + Number(row.dozens || 0));
+      });
+
+      const monthlyDozens = Array.from(monthlyDozensMap.entries())
+        .map(([label, total]) => ({ label, total: Number(total.toFixed(2)) }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+      const dailyDozens = summarizeTop(filtered, "date", "dozens", 120)
+        .filter((row) => row.label && row.label !== "غير محدد")
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+      const bySource = summarizeTop(filtered, "source", "dozens", 10);
+      const topLines = summarizeTop(filtered, "lineName", "dozens", 8);
+      const topItems = summarizeTop(filtered, "itemName", "dozens", 8);
+      const topDestinations = summarizeTop(filtered, "destination", "dozens", 8);
+      const sizeBreakdown = summarizeTop(filtered, "size", "dozens", 10);
+      const topModels = summarizeTop(filtered, "modelCode", "dozens", 10);
+      const topColors = summarizeTop(filtered, "color", "dozens", 10);
+      const topStories = summarizeTop(filtered, "storyNo", "dozens", 10);
+
+      const sourceCards = PRODUCTION_SHEETS.filter((sheet) => sheet.gid).map((sheet) => {
+        const sourceRows = dateScoped.filter((row) => row.source === sheet.title);
+        const sourceDozens = sourceRows.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
+        const sourceQty = sourceRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+        return {
+          source: sheet.title,
+          totalDozens: Number(sourceDozens.toFixed(2)),
+          totalQuantity: Number(sourceQty.toFixed(2)),
+          recordsCount: sourceRows.length,
+          topDestinations: summarizeTop(sourceRows, "destination", "dozens", 6),
+          topLines: summarizeTop(sourceRows, "lineName", "dozens", 4)
+        };
+      });
+
+      const filterOptions = {
+        lines: Array.from(new Set(sourceScoped.map((row) => row.lineName).filter(Boolean))).sort((a, b) =>
+          a.localeCompare(b, "ar")
+        ),
+        colors: Array.from(new Set(sourceScoped.map((row) => row.color).filter(Boolean))).sort((a, b) =>
+          a.localeCompare(b, "ar")
+        ),
+        sizes: Array.from(new Set(sourceScoped.map((row) => row.size).filter(Boolean))).sort((a, b) =>
+          a.localeCompare(b, "ar")
+        ),
+        months: Array.from(new Set(sourceScoped.map((row) => String(row.date || "").slice(0, 7)).filter(Boolean))).sort()
+      };
+
+      const recentRecords = filtered
+        .filter((row) => row.date)
+        .sort((a, b) => {
+          const dateDiff = String(b.date).localeCompare(String(a.date));
+          if (dateDiff !== 0) return dateDiff;
+          return Number(b.dozens || 0) - Number(a.dozens || 0);
+        })
+        .slice(0, 12);
+
+      return {
+        selectedSource: source || "الكل",
+        overallTotalQuantity: Number(overallTotalQuantity.toFixed(2)),
+        overallTotalDozens: Number(overallTotalDozens.toFixed(2)),
+        totalQuantity: Number(totalQuantity.toFixed(2)),
+        totalDozens: Number(totalDozens.toFixed(2)),
+        recordsCount: filtered.length,
+        storiesCount: new Set(filtered.map((row) => row.storyNo).filter(Boolean)).size,
+        modelsCount: new Set(filtered.map((row) => row.modelCode).filter(Boolean)).size,
+        linesCount: new Set(filtered.map((row) => row.lineName).filter(Boolean)).size,
+        averageDozensPerRecord: filtered.length ? Number((totalDozens / filtered.length).toFixed(2)) : 0,
+        sourceCards,
+        filterOptions,
+        sources: PRODUCTION_SHEETS.map((sheet) => sheet.title),
+        bySource,
+        dailyDozens,
+        monthlyDozens,
+        topLines,
+        topModels,
+        topItems,
+        topDestinations,
+        topColors,
+        topStories,
+        sizeBreakdown,
+        recentRecords
       };
     });
 

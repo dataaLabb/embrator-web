@@ -26,6 +26,7 @@
     dashboardPayload: null,
     dashboardChartView: "trend",
     productionPayload: null,
+    productionSourceTab: "",
     fieldAnalyticsPayload: null,
     fieldMovementsPayload: null,
     fieldMovementsPage: 1,
@@ -199,15 +200,32 @@
 
     ui.productionFrom = document.getElementById("production-from");
     ui.productionTo = document.getElementById("production-to");
-    ui.productionSource = document.getElementById("production-source");
     ui.loadProductionDashboard = document.getElementById("load-production-dashboard");
+    ui.productionHeadlineTitle = document.getElementById("production-headline-title");
+    ui.productionHeadlineCaption = document.getElementById("production-headline-caption");
+    ui.productionOverallTotal = document.getElementById("production-overall-total");
+    ui.productionOverviewBoard = document.getElementById("production-overview-board");
+    ui.productionSourceButtons = Array.from(document.querySelectorAll("[data-production-source]"));
+    ui.productionLineFilter = document.getElementById("production-line-filter");
+    ui.productionColorFilter = document.getElementById("production-color-filter");
+    ui.productionSizeFilter = document.getElementById("production-size-filter");
+    ui.productionMonthFilter = document.getElementById("production-month-filter");
+    ui.productionModelFilter = document.getElementById("production-model-filter");
     ui.productionMetrics = document.getElementById("production-metrics");
-    ui.productionDailyChart = document.getElementById("production-daily-chart");
-    ui.productionSourceChart = document.getElementById("production-source-chart");
+    ui.productionDailyChart = document.getElementById("production-monthly-chart") || document.getElementById("production-daily-chart");
+    ui.productionSourceChart =
+      document.getElementById("production-destinations-chart") || document.getElementById("production-source-chart");
     ui.productionLinesChart = document.getElementById("production-lines-chart");
+    ui.productionModelsList = document.getElementById("production-models-list");
     ui.productionItemsList = document.getElementById("production-items-list");
     ui.productionDestinationsList = document.getElementById("production-destinations-list");
+    ui.productionSizesList = document.getElementById("production-sizes-list");
+    ui.productionColorsList = document.getElementById("production-colors-list");
     ui.productionRecordsTable = document.getElementById("production-records-table");
+    ui.productionLegacySource = document.getElementById("production-source");
+    if (ui.productionLegacySource && ui.productionLegacySource.closest(".field")) {
+      ui.productionLegacySource.closest(".field").classList.add("hidden");
+    }
 
     ui.fieldFrom = document.getElementById("field-from");
     ui.fieldTo = document.getElementById("field-to");
@@ -294,6 +312,20 @@
     ui.unlockDashboard.addEventListener("click", onUnlockDashboard);
     ui.loadDashboard.addEventListener("click", onLoadDashboard);
     ui.loadProductionDashboard.addEventListener("click", onLoadProductionDashboard);
+    ui.productionSourceButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        state.productionSourceTab = button.dataset.productionSource || "";
+        setActiveProductionSourceTab();
+        onLoadProductionDashboard();
+      });
+    });
+    [ui.productionLineFilter, ui.productionColorFilter, ui.productionSizeFilter, ui.productionMonthFilter].forEach((element) => {
+      if (!element) return;
+      element.addEventListener("change", onLoadProductionDashboard);
+    });
+    if (ui.productionModelFilter) {
+      ui.productionModelFilter.addEventListener("change", onLoadProductionDashboard);
+    }
     ui.dashboardChartButtons.forEach((button) => {
       button.addEventListener("click", function () {
         setDashboardChartView(button.dataset.dashboardChart || "trend");
@@ -343,10 +375,11 @@
     renderLocationSummary("visit");
     renderLocationSummary("collection");
     renderLocationSummary("order");
-    renderProductionDashboard(state.productionPayload);
+    renderProductionDashboardV2(state.productionPayload);
     renderDashboard(state.dashboardPayload);
     renderFieldAnalytics(state.fieldAnalyticsPayload, state.fieldMovementsPayload);
     setDashboardChartView(state.dashboardChartView);
+    setActiveProductionSourceTab();
     syncTransferField();
     setPage(state.currentPage);
   }
@@ -412,6 +445,8 @@
     state.ordersSummary = [];
     state.ordersRepFilter = "";
     state.dashboardPayload = null;
+    state.productionPayload = null;
+    state.productionSourceTab = "";
     state.fieldAnalyticsPayload = null;
     state.fieldMovementsPayload = null;
     state.fieldMovementsPage = 1;
@@ -446,6 +481,10 @@
       "field-analytics": "تحليل الزيارات والتحصيلات"
     };
     ui.screenTitle.textContent = titles[pageName] || "Embrator";
+
+    if (pageName === "production-dashboard" && !state.productionPayload && state.token) {
+      onLoadProductionDashboard();
+    }
   }
 
   async function loadLookups(force) {
@@ -1412,14 +1451,19 @@
       const body = {
         from: ui.productionFrom.value || null,
         to: ui.productionTo.value || null,
-        source: ui.productionSource.value || null
+        source: state.productionSourceTab || null,
+        line: ui.productionLineFilter ? ui.productionLineFilter.value || null : null,
+        color: ui.productionColorFilter ? ui.productionColorFilter.value || null : null,
+        size: ui.productionSizeFilter ? ui.productionSizeFilter.value || null : null,
+        month: ui.productionMonthFilter ? ui.productionMonthFilter.value || null : null,
+        model: ui.productionModelFilter ? ui.productionModelFilter.value.trim() || null : null
       };
       state.productionFilters = body;
-      state.productionPayload = await apiRequest("/api/production-dashboard", {
+      state.productionPayload = await apiRequest("/api/production-dashboard-v2", {
         method: "POST",
         body
       });
-      renderProductionDashboard(state.productionPayload);
+      renderProductionDashboardV2(state.productionPayload);
       notify("تم تحميل لوحة الإنتاج.", "success");
     } catch (error) {
       notify(error.message || "تعذر تحميل بيانات الإنتاج.", "error");
@@ -1528,6 +1572,274 @@
     ui.productionDestinationsList.innerHTML = renderScoreList(payload.topDestinations, "كمية");
     ui.productionRecordsTable.innerHTML = renderProductionRecords(payload.recentRecords || []);
     renderProductionCharts(payload);
+  }
+
+  function renderProductionDashboardV2(payload) {
+    if (!payload) {
+      ui.productionMetrics.innerHTML = "";
+      if (ui.productionOverviewBoard) ui.productionOverviewBoard.innerHTML = "";
+      if (ui.productionOverallTotal) ui.productionOverallTotal.textContent = "--";
+      if (ui.productionModelsList) ui.productionModelsList.innerHTML = emptyInline("لا توجد بيانات بعد");
+      if (ui.productionItemsList) ui.productionItemsList.innerHTML = emptyInline("لا توجد بيانات بعد");
+      if (ui.productionDestinationsList) ui.productionDestinationsList.innerHTML = emptyInline("لا توجد بيانات بعد");
+      if (ui.productionSizesList) ui.productionSizesList.innerHTML = emptyInline("لا توجد بيانات بعد");
+      if (ui.productionColorsList) ui.productionColorsList.innerHTML = emptyInline("لا توجد بيانات بعد");
+      ui.productionRecordsTable.innerHTML = `<tr><td colspan="11" class="empty-state">لا توجد بيانات بعد</td></tr>`;
+      destroyProductionCharts();
+      return;
+    }
+
+    syncProductionStaticCopy();
+    renderProductionOverviewV2(payload);
+    hydrateProductionFiltersV2(payload.filterOptions || {});
+
+    ui.productionMetrics.innerHTML = [
+      metricCard("إجمالي الدستة", formatNumber(payload.totalDozens || 0)),
+      metricCard("عدد السجلات", payload.recordsCount || 0),
+      metricCard("عدد القصص", payload.storiesCount || 0),
+      metricCard("عدد الموديلات", payload.modelsCount || 0),
+      metricCard("عدد الخطوط", payload.linesCount || 0),
+      metricCard("متوسط الدستة/سجل", formatNumber(payload.averageDozensPerRecord || 0)),
+      metricCard("إجمالي الدستة للفترة", formatNumber(payload.overallTotalDozens || 0))
+    ].join("");
+
+    if (ui.productionModelsList) ui.productionModelsList.innerHTML = renderScoreList(payload.topModels, "دستة");
+    if (ui.productionItemsList) ui.productionItemsList.innerHTML = renderScoreList(payload.topItems, "دستة");
+    if (ui.productionDestinationsList) ui.productionDestinationsList.innerHTML = renderScoreList(payload.topDestinations, "دستة");
+    if (ui.productionSizesList) ui.productionSizesList.innerHTML = renderScoreList(payload.sizeBreakdown, "دستة");
+    if (ui.productionColorsList) ui.productionColorsList.innerHTML = renderScoreList(payload.topColors, "دستة");
+    ui.productionRecordsTable.innerHTML = renderProductionRecordsV2(payload.recentRecords || []);
+    renderProductionChartsV2(payload);
+  }
+
+  function syncProductionStaticCopy() {
+    setProductionSectionCopy("لوحة الإنتاج", "شاشة تنفيذية تفاعلية تقرأ من Google Sheets، وتبني كل المقارنات والوصف على عمود الكمية بالدستة.");
+    setProductionCardCopy(ui.productionDailyChart, "الإنتاج الشهري بالدستة", "اتجاه الإنتاج خلال الشهور اعتمادًا على الكمية بالدستة فقط.");
+    setProductionCardCopy(ui.productionSourceChart, "توزيع الوجهات بالدستة", "أكثر الجهات استقبالًا للإنتاج داخل التبويب الحالي بالدستة.");
+    setProductionCardCopy(ui.productionLinesChart, "أفضل الخطوط بالدستة", "الخطوط الأعلى إنتاجًا على أساس الكمية بالدستة.");
+    setProductionCardCopy(ui.productionItemsList, "أفضل الأصناف", "مقارنة الأصناف مبنية على الكمية بالدستة.");
+    setProductionCardCopy(ui.productionDestinationsList, "أفضل الوجهات", "ترتيب الجهات والأقسام يتم بالدستة.");
+    syncProductionTableHeaders();
+  }
+
+  function setProductionSectionCopy(title, text) {
+    const page = document.querySelector('[data-page="production-dashboard"]');
+    if (!page) return;
+    const heading = page.querySelector(".section-head h2");
+    const paragraph = page.querySelector(".section-head p");
+    if (heading) heading.textContent = title;
+    if (paragraph) paragraph.textContent = text;
+  }
+
+  function setProductionCardCopy(anchor, title, text) {
+    if (!anchor) return;
+    const card = anchor.closest(".sub-card");
+    if (!card) return;
+    const heading = card.querySelector("h3");
+    const paragraph = card.querySelector(".muted");
+    if (heading) heading.textContent = title;
+    if (paragraph) paragraph.textContent = text;
+  }
+
+  function syncProductionTableHeaders() {
+    const table = ui.productionRecordsTable ? ui.productionRecordsTable.closest("table") : null;
+    if (!table) return;
+    const headers = Array.from(table.querySelectorAll("thead th"));
+    const values = ["التاريخ", "التشغيل", "اسم الخط", "رقم القصة", "كود الموديل", "الصنف", "اللون", "المقاس", "الدستة", "الكمية", "موجه إلى"];
+    headers.forEach((header, index) => {
+      if (values[index]) header.textContent = values[index];
+    });
+    const head = table.closest(".sub-card");
+    if (head) {
+      const title = head.querySelector("h3");
+      const text = head.querySelector(".muted");
+      if (title) title.textContent = "أحدث سجلات الإنتاج";
+      if (text) text.textContent = "السجل يعرض الدستة كمرجع أساسي، مع إبقاء الكمية الخام للمراجعة فقط.";
+    }
+  }
+
+  function renderProductionOverviewV2(payload) {
+    if (ui.productionHeadlineTitle) {
+      ui.productionHeadlineTitle.textContent =
+        payload.selectedSource && payload.selectedSource !== "الكل"
+          ? `إنتاج ${payload.selectedSource}`
+          : "إنتاج مجموعة سماقية إخوان";
+    }
+    if (ui.productionHeadlineCaption) {
+      ui.productionHeadlineCaption.textContent =
+        payload.selectedSource && payload.selectedSource !== "الكل"
+          ? `اللوحة الحالية تخص ${payload.selectedSource} وجميع المقارنات فيها بالدستة.`
+          : "الرئيسية تعرض توزيع الإنتاج على الجاهز والداخلي ووينكز بالدستة.";
+    }
+    if (ui.productionOverallTotal) {
+      ui.productionOverallTotal.textContent = formatNumber(payload.overallTotalDozens || 0);
+    }
+    if (ui.productionOverviewBoard) {
+      ui.productionOverviewBoard.innerHTML = (payload.sourceCards || []).map(renderProductionSourceColumnV2).join("");
+      ui.productionOverviewBoard.querySelectorAll("[data-production-source-card]").forEach((card) => {
+        card.addEventListener("click", function () {
+          state.productionSourceTab = card.dataset.productionSourceCard || "";
+          setActiveProductionSourceTab();
+          onLoadProductionDashboard();
+        });
+      });
+    }
+    setActiveProductionSourceTab();
+  }
+
+  function renderProductionSourceColumnV2(card) {
+    const isActive = card.source === state.productionSourceTab;
+    const flowRows = (card.topDestinations && card.topDestinations.length ? card.topDestinations : card.topLines || []).slice(0, 6);
+    return `
+      <article class="production-source-column ${isActive ? "active" : ""}" data-production-source-card="${escapeHtml(card.source)}">
+        <header>
+          <span>${escapeHtml(card.source)}</span>
+          <strong>${escapeHtml(formatNumber(card.totalDozens || 0))}</strong>
+        </header>
+        <div class="production-source-meta">
+          <small>إجمالي الدستة</small>
+          <small>سجلات: ${escapeHtml(String(card.recordsCount || 0))}</small>
+        </div>
+        <div class="production-flow-list">
+          ${
+            flowRows.length
+              ? flowRows
+                  .map(
+                    (row) => `
+                      <div class="production-flow-step">
+                        <span>${escapeHtml(row.label || "--")}</span>
+                        <strong>${escapeHtml(formatNumber(row.total || 0))}</strong>
+                      </div>
+                    `
+                  )
+                  .join("")
+              : `<div class="production-flow-step"><span>لا توجد بيانات</span><strong>0</strong></div>`
+          }
+        </div>
+      </article>
+    `;
+  }
+
+  function hydrateProductionFiltersV2(filterOptions) {
+    populateSelectV2(ui.productionLineFilter, filterOptions.lines || [], state.productionFilters && state.productionFilters.line);
+    populateSelectV2(ui.productionColorFilter, filterOptions.colors || [], state.productionFilters && state.productionFilters.color);
+    populateSelectV2(ui.productionSizeFilter, filterOptions.sizes || [], state.productionFilters && state.productionFilters.size);
+    populateSelectV2(
+      ui.productionMonthFilter,
+      (filterOptions.months || []).map((value) => ({ value, label: formatMonthKeyV2(value) })),
+      state.productionFilters && state.productionFilters.month
+    );
+    if (ui.productionModelFilter && state.productionFilters && typeof state.productionFilters.model === "string") {
+      ui.productionModelFilter.value = state.productionFilters.model;
+    }
+  }
+
+  function populateSelectV2(select, options, selectedValue) {
+    if (!select) return;
+    const normalized = (options || []).map((entry) =>
+      typeof entry === "string" ? { value: entry, label: entry } : entry
+    );
+    const current = typeof selectedValue === "string" ? selectedValue : "";
+    select.innerHTML = [`<option value="">الكل</option>`]
+      .concat(
+        normalized.map(
+          (entry) =>
+            `<option value="${escapeHtml(entry.value)}" ${entry.value === current ? "selected" : ""}>${escapeHtml(entry.label)}</option>`
+        )
+      )
+      .join("");
+  }
+
+  function formatMonthKeyV2(value) {
+    const raw = String(value || "");
+    if (!/^\d{4}-\d{2}$/.test(raw)) return raw || "--";
+    const date = new Date(`${raw}-01T00:00:00`);
+    return new Intl.DateTimeFormat("ar-EG", { month: "long", year: "numeric" }).format(date);
+  }
+
+  function renderProductionRecordsV2(rows) {
+    if (!rows || !rows.length) {
+      return `<tr><td colspan="11" class="empty-state">لا توجد سجلات مطابقة</td></tr>`;
+    }
+    return rows
+      .map(
+        (row) => `
+          <tr>
+            <td>${escapeHtml(formatDate(row.date))}</td>
+            <td>${escapeHtml(row.source || "--")}</td>
+            <td>${escapeHtml(row.lineName || "--")}</td>
+            <td>${escapeHtml(row.storyNo || "--")}</td>
+            <td>${escapeHtml(row.modelCode || "--")}</td>
+            <td>${escapeHtml(row.itemName || "--")}</td>
+            <td>${escapeHtml(row.color || "--")}</td>
+            <td>${escapeHtml(row.size || "--")}</td>
+            <td>${escapeHtml(formatNumber(row.dozens || 0))}</td>
+            <td>${escapeHtml(formatNumber(row.quantity || 0))}</td>
+            <td>${escapeHtml(row.destination || "--")}</td>
+          </tr>
+        `
+      )
+      .join("");
+  }
+
+  function setActiveProductionSourceTab() {
+    if (!ui.productionSourceButtons) return;
+    ui.productionSourceButtons.forEach((button) => {
+      button.classList.toggle("active", (button.dataset.productionSource || "") === (state.productionSourceTab || ""));
+    });
+  }
+
+  function renderProductionChartsV2(payload) {
+    destroyProductionCharts();
+    if (!window.Chart) return;
+
+    state.charts.productionDaily = new window.Chart(ui.productionDailyChart, {
+      type: "line",
+      data: {
+        labels: (payload.monthlyDozens || []).map((row) => formatMonthKeyV2(row.label)),
+        datasets: [
+          {
+            label: "الدستة",
+            data: (payload.monthlyDozens || []).map((row) => row.total),
+            borderColor: "#0d4f8b",
+            backgroundColor: "rgba(13, 79, 139, 0.15)",
+            tension: 0.3,
+            fill: true
+          }
+        ]
+      },
+      options: chartOptions()
+    });
+
+    state.charts.productionSource = new window.Chart(ui.productionSourceChart, {
+      type: "doughnut",
+      data: {
+        labels: (payload.topDestinations || []).map((row) => row.label),
+        datasets: [
+          {
+            data: (payload.topDestinations || []).map((row) => row.total),
+            backgroundColor: ["#0d4f8b", "#1b8c7a", "#a64c28", "#d18a1d", "#6d3ea8", "#e06292"]
+          }
+        ]
+      },
+      options: chartOptions({ cutout: "62%" })
+    });
+
+    state.charts.productionLines = new window.Chart(ui.productionLinesChart, {
+      type: "bar",
+      data: {
+        labels: (payload.topLines || []).map((row) => row.label),
+        datasets: [
+          {
+            label: "الدستة",
+            data: (payload.topLines || []).map((row) => row.total),
+            backgroundColor: "#a64c28",
+            borderRadius: 10
+          }
+        ]
+      },
+      options: chartOptions({ indexAxis: "y" })
+    });
   }
 
   function renderFieldAnalytics(payload, movementsPayload) {
