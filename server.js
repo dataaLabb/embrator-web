@@ -233,6 +233,146 @@ async function getOrderLines(orderId) {
   );
 }
 
+const PRODUCTION_SHEET_ID = process.env.PRODUCTION_SHEET_ID || "1T4aYUQn6MRme1LfKe6ryd4YbJMaEN6VNobnwjM9yEZo";
+const PRODUCTION_SHEETS = [
+  { key: "all", title: "الكل", gid: null },
+  { key: "ready", title: "الجاهز", gid: "0" },
+  { key: "internal", title: "داخلي", gid: "1577931770" },
+  { key: "wings", title: "وينكز", gid: "221278991" }
+];
+const PRODUCTION_CACHE_TTL_MS = 2 * 60 * 1000;
+let productionRowsCache = { time: 0, rows: [] };
+
+function parseCsvRows(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        value += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      row.push(value);
+      value = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") i += 1;
+      row.push(value);
+      rows.push(row);
+      row = [];
+      value = "";
+    } else {
+      value += char;
+    }
+  }
+  if (value.length || row.length) {
+    row.push(value);
+    rows.push(row);
+  }
+  return rows.filter((entry) => entry.some((cell) => String(cell || "").trim() !== ""));
+}
+
+function normalizeHeader(value) {
+  return String(value || "")
+    .replace(/\uFEFF/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function toNumber(value) {
+  const num = Number(String(value || "").replace(/,/g, "").trim());
+  return Number.isFinite(num) ? num : 0;
+}
+
+function toIsoDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) {
+    const first = Number(slash[1]);
+    const second = Number(slash[2]);
+    const year = Number(slash[3]);
+    const month = first > 12 ? second : first;
+    const day = first > 12 ? first : second;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+}
+
+async function fetchProductionSheetRows(sheet) {
+  const url = `https://docs.google.com/spreadsheets/d/${PRODUCTION_SHEET_ID}/export?format=csv&gid=${sheet.gid}`;
+  const response = await fetch(url, { headers: { "User-Agent": "embrator-web/1.0" } });
+  if (!response.ok) {
+    throw new Error(`تعذر قراءة شيت الإنتاج: ${sheet.title}`);
+  }
+  const csv = await response.text();
+  const rows = parseCsvRows(csv);
+  const headers = (rows.shift() || []).map(normalizeHeader);
+  const indexOf = (name) => headers.findIndex((header) => header === name);
+
+  const indexes = {
+    lineNumber: indexOf("رقم الخط"),
+    lineName: indexOf("اسم الخط"),
+    date: indexOf("التاريخ"),
+    storyNo: indexOf("رقم القصة"),
+    modelCode: indexOf("كود الموديل"),
+    workOrder: indexOf("امر الشغل (د)"),
+    itemName: indexOf("الصنف"),
+    size: indexOf("المقاس"),
+    color: indexOf("اللون"),
+    quantity: indexOf("الكمية"),
+    dozens: indexOf("الكمية بالدستة"),
+    destination: indexOf("موجه الي")
+  };
+
+  return rows.map((row) => ({
+    source: sheet.title,
+    lineNumber: indexes.lineNumber >= 0 ? String(row[indexes.lineNumber] || "").trim() : "",
+    lineName: indexes.lineName >= 0 ? String(row[indexes.lineName] || "").trim() : "",
+    date: indexes.date >= 0 ? toIsoDate(row[indexes.date]) : "",
+    storyNo: indexes.storyNo >= 0 ? String(row[indexes.storyNo] || "").trim() : "",
+    modelCode: indexes.modelCode >= 0 ? String(row[indexes.modelCode] || "").trim() : "",
+    workOrder: indexes.workOrder >= 0 ? String(row[indexes.workOrder] || "").trim() : "",
+    itemName: indexes.itemName >= 0 ? String(row[indexes.itemName] || "").trim() : "",
+    size: indexes.size >= 0 ? String(row[indexes.size] || "").trim() : "",
+    color: indexes.color >= 0 ? String(row[indexes.color] || "").trim() : "",
+    quantity: indexes.quantity >= 0 ? toNumber(row[indexes.quantity]) : 0,
+    dozens: indexes.dozens >= 0 ? toNumber(row[indexes.dozens]) : 0,
+    destination: indexes.destination >= 0 ? String(row[indexes.destination] || "").trim() : ""
+  }));
+}
+
+async function getProductionRows() {
+  const now = Date.now();
+  if (productionRowsCache.rows.length && now - productionRowsCache.time < PRODUCTION_CACHE_TTL_MS) {
+    return productionRowsCache.rows;
+  }
+  const rows = (await Promise.all(PRODUCTION_SHEETS.filter((sheet) => sheet.gid).map(fetchProductionSheetRows))).flat();
+  productionRowsCache = { time: now, rows };
+  return rows;
+}
+
+function summarizeTop(rows, key, valueKey, limit = 6) {
+  const map = new Map();
+  rows.forEach((row) => {
+    const label = String(row[key] || "").trim() || "غير محدد";
+    map.set(label, (map.get(label) || 0) + Number(row[valueKey] || 0));
+  });
+  return Array.from(map.entries())
+    .map(([label, total]) => ({ label, total: Number(total.toFixed(2)) }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, limit);
+}
+
 // ─── express ───────────────────────────────────────────────────────────────────
 const app = express();
 
@@ -921,6 +1061,63 @@ app.post("/api/field-movements", authRequired, async (req, res) => {
           due_date: r.due_date, has_cheque_image: Boolean(r.has_cheque_image),
           lat: r.lat, lng: r.lng, arabic_address: r.arabic_address, map_url: r.map_url
         }))
+      };
+    });
+
+    res.json(payload);
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
+app.post("/api/production-dashboard", authRequired, async (req, res) => {
+  try {
+    const payload = await withAnalyticsCache("production-dashboard", req.body || {}, async () => {
+      const from = String(req.body.from || "").trim();
+      const to = String(req.body.to || "").trim();
+      const source = String(req.body.source || "").trim();
+      const rows = await getProductionRows();
+      const filtered = rows.filter((row) => {
+        if (source && source !== "الكل" && row.source !== source) return false;
+        if (from && row.date && row.date < from) return false;
+        if (to && row.date && row.date > to) return false;
+        return true;
+      });
+
+      const totalQuantity = filtered.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+      const totalDozens = filtered.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
+      const dailyQuantity = summarizeTop(filtered, "date", "quantity", 120)
+        .filter((row) => row.label && row.label !== "غير محدد")
+        .sort((a, b) => a.label.localeCompare(b.label));
+      const bySource = summarizeTop(filtered, "source", "quantity", 10);
+      const topLines = summarizeTop(filtered, "lineName", "quantity", 8);
+      const topItems = summarizeTop(filtered, "itemName", "quantity", 8);
+      const topDestinations = summarizeTop(filtered, "destination", "quantity", 8);
+      const sizeBreakdown = summarizeTop(filtered, "size", "quantity", 10);
+      const recentRecords = filtered
+        .filter((row) => row.date)
+        .sort((a, b) => {
+          const dateDiff = String(b.date).localeCompare(String(a.date));
+          if (dateDiff !== 0) return dateDiff;
+          return Number(b.quantity || 0) - Number(a.quantity || 0);
+        })
+        .slice(0, 8);
+
+      return {
+        totalQuantity: Number(totalQuantity.toFixed(2)),
+        totalDozens: Number(totalDozens.toFixed(2)),
+        recordsCount: filtered.length,
+        storiesCount: new Set(filtered.map((row) => row.storyNo).filter(Boolean)).size,
+        modelsCount: new Set(filtered.map((row) => row.modelCode).filter(Boolean)).size,
+        linesCount: new Set(filtered.map((row) => row.lineName).filter(Boolean)).size,
+        sources: PRODUCTION_SHEETS.map((sheet) => sheet.title),
+        bySource,
+        dailyQuantity,
+        topLines,
+        topItems,
+        topDestinations,
+        sizeBreakdown,
+        recentRecords
       };
     });
 

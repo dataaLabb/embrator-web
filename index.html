@@ -93,6 +93,7 @@
               <button class="menu-link" data-screen="orders-browser">عرض الطلبيات</button>
               <button class="menu-link" data-screen="customers">العملاء</button>
               <button class="menu-link" data-screen="items">المنتجات</button>
+              <button class="menu-link" data-screen="production-dashboard">لوحة الإنتاج</button>
               <button class="menu-link" data-screen="dashboard">لوحة التحليلات</button>
               <button class="menu-link" data-screen="field-analytics">تحليل الزيارات والتحصيلات</button>
             </nav>
@@ -153,6 +154,10 @@
               <button class="quick-card card-customers" data-jump="customers">
                 <strong>العملاء</strong>
                 <span>إضافة عميل جديد، استعراض العملاء، وتعديل البيانات بسهولة.</span>
+              </button>
+              <button class="quick-card card-browser" data-jump="production-dashboard">
+                <strong>لوحة الإنتاج</strong>
+                <span>قراءة مباشرة من Google Sheets مع مؤشرات أولية للإنتاج والخطوط والموديلات.</span>
               </button>
               <button class="quick-card card-dashboard" data-jump="dashboard">
                 <strong>لوحة التحليلات</strong>
@@ -796,6 +801,125 @@
                 </section>
               </div>
             </div>
+          </section>
+
+          <section class="glass page-section hidden" data-page="production-dashboard">
+            <div class="section-head">
+              <h2>لوحة الإنتاج</h2>
+              <p>لوحة أولية خفيفة تقرأ بيانات الإنتاج من Google Sheets وتعرض مؤشرات يومية حسب الخطوط والموديلات والوجهات.</p>
+            </div>
+
+            <div class="filters-grid">
+              <label class="field">
+                <span>من تاريخ</span>
+                <input id="production-from" type="date" />
+              </label>
+              <label class="field">
+                <span>إلى تاريخ</span>
+                <input id="production-to" type="date" />
+              </label>
+              <label class="field">
+                <span>نوع التشغيل</span>
+                <select id="production-source">
+                  <option value="">الكل</option>
+                  <option value="الجاهز">الجاهز</option>
+                  <option value="داخلي">داخلي</option>
+                  <option value="وينكز">وينكز</option>
+                </select>
+              </label>
+              <div class="field field-button">
+                <span>&nbsp;</span>
+                <button id="load-production-dashboard" class="btn btn-primary" type="button">تحميل الإنتاج</button>
+              </div>
+            </div>
+
+            <div id="production-metrics" class="metrics-grid metrics-grid-wide"></div>
+
+            <div class="dashboard-layout field-layout production-layout">
+              <section class="sub-card chart-card chart-card-hero">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>الإنتاج اليومي</h3>
+                    <p class="muted">إجمالي الكمية حسب التاريخ داخل الفترة المختارة.</p>
+                  </div>
+                </div>
+                <canvas id="production-daily-chart" height="116"></canvas>
+              </section>
+
+              <section class="sub-card chart-card chart-card-donut">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>توزيع الإنتاج حسب التشغيل</h3>
+                    <p class="muted">الجاهز، داخلي، ووينكز حسب الكمية.</p>
+                  </div>
+                </div>
+                <canvas id="production-source-chart" height="116"></canvas>
+              </section>
+            </div>
+
+            <div class="dashboard-layout bottom production-bottom">
+              <section class="sub-card chart-card chart-card-bar">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>أفضل الخطوط</h3>
+                    <p class="muted">الخطوط الأعلى إنتاجًا حسب الكمية.</p>
+                  </div>
+                </div>
+                <canvas id="production-lines-chart" height="116"></canvas>
+              </section>
+
+              <section class="sub-card">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>أفضل الأصناف</h3>
+                    <p class="muted">الأصناف الأعلى إنتاجًا داخل الشيت.</p>
+                  </div>
+                </div>
+                <div id="production-items-list" class="list-stack"></div>
+              </section>
+
+              <section class="sub-card">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>أفضل الوجهات</h3>
+                    <p class="muted">الجهات أو الأقسام الأكثر استقبالًا للإنتاج.</p>
+                  </div>
+                </div>
+                <div id="production-destinations-list" class="list-stack"></div>
+              </section>
+            </div>
+
+            <section class="sub-card table-card">
+              <div class="card-inline-head">
+                <div>
+                  <h3>آخر السجلات</h3>
+                  <p class="muted">عينة من أحدث السجلات بعد تطبيق الفلاتر.</p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>التاريخ</th>
+                      <th>التشغيل</th>
+                      <th>اسم الخط</th>
+                      <th>رقم القصة</th>
+                      <th>كود الموديل</th>
+                      <th>الصنف</th>
+                      <th>اللون</th>
+                      <th>المقاس</th>
+                      <th>الكمية</th>
+                      <th>موجه إلى</th>
+                    </tr>
+                  </thead>
+                  <tbody id="production-records-table">
+                    <tr>
+                      <td colspan="10" class="empty-state">لا توجد بيانات بعد</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </section>
 
           <section class="glass page-section hidden" data-page="field-analytics">

@@ -25,10 +25,12 @@
     ordersRepFilter: "",
     dashboardPayload: null,
     dashboardChartView: "trend",
+    productionPayload: null,
     fieldAnalyticsPayload: null,
     fieldMovementsPayload: null,
     fieldMovementsPage: 1,
     fieldFilters: null,
+    productionFilters: null,
     homeSummary: null,
     lastCompletedOrder: null,
     locations: {
@@ -195,6 +197,18 @@
       collectionType: ui.collectionTypeChart ? ui.collectionTypeChart.closest(".sub-card") : null
     };
 
+    ui.productionFrom = document.getElementById("production-from");
+    ui.productionTo = document.getElementById("production-to");
+    ui.productionSource = document.getElementById("production-source");
+    ui.loadProductionDashboard = document.getElementById("load-production-dashboard");
+    ui.productionMetrics = document.getElementById("production-metrics");
+    ui.productionDailyChart = document.getElementById("production-daily-chart");
+    ui.productionSourceChart = document.getElementById("production-source-chart");
+    ui.productionLinesChart = document.getElementById("production-lines-chart");
+    ui.productionItemsList = document.getElementById("production-items-list");
+    ui.productionDestinationsList = document.getElementById("production-destinations-list");
+    ui.productionRecordsTable = document.getElementById("production-records-table");
+
     ui.fieldFrom = document.getElementById("field-from");
     ui.fieldTo = document.getElementById("field-to");
     ui.fieldRep = document.getElementById("field-rep");
@@ -279,6 +293,7 @@
 
     ui.unlockDashboard.addEventListener("click", onUnlockDashboard);
     ui.loadDashboard.addEventListener("click", onLoadDashboard);
+    ui.loadProductionDashboard.addEventListener("click", onLoadProductionDashboard);
     ui.dashboardChartButtons.forEach((button) => {
       button.addEventListener("click", function () {
         setDashboardChartView(button.dataset.dashboardChart || "trend");
@@ -328,6 +343,7 @@
     renderLocationSummary("visit");
     renderLocationSummary("collection");
     renderLocationSummary("order");
+    renderProductionDashboard(state.productionPayload);
     renderDashboard(state.dashboardPayload);
     renderFieldAnalytics(state.fieldAnalyticsPayload, state.fieldMovementsPayload);
     setDashboardChartView(state.dashboardChartView);
@@ -425,6 +441,7 @@
       "orders-browser": "عرض الطلبيات",
       customers: "إدارة العملاء",
       items: "إدارة المنتجات",
+      "production-dashboard": "لوحة الإنتاج",
       dashboard: "لوحة التحليلات",
       "field-analytics": "تحليل الزيارات والتحصيلات"
     };
@@ -1389,6 +1406,28 @@
     }
   }
 
+  async function onLoadProductionDashboard() {
+    setBusy(ui.loadProductionDashboard, true, "جارٍ تحميل الإنتاج...");
+    try {
+      const body = {
+        from: ui.productionFrom.value || null,
+        to: ui.productionTo.value || null,
+        source: ui.productionSource.value || null
+      };
+      state.productionFilters = body;
+      state.productionPayload = await apiRequest("/api/production-dashboard", {
+        method: "POST",
+        body
+      });
+      renderProductionDashboard(state.productionPayload);
+      notify("تم تحميل لوحة الإنتاج.", "success");
+    } catch (error) {
+      notify(error.message || "تعذر تحميل بيانات الإنتاج.", "error");
+    } finally {
+      setBusy(ui.loadProductionDashboard, false, "تحميل الإنتاج");
+    }
+  }
+
   async function onLoadFieldAnalytics() {
     setBusy(ui.loadFieldAnalytics, true, "جارٍ التحميل...");
     try {
@@ -1466,6 +1505,31 @@
     renderCharts(payload);
   }
 
+  function renderProductionDashboard(payload) {
+    if (!payload) {
+      ui.productionMetrics.innerHTML = "";
+      ui.productionItemsList.innerHTML = emptyInline("لا توجد بيانات بعد");
+      ui.productionDestinationsList.innerHTML = emptyInline("لا توجد بيانات بعد");
+      ui.productionRecordsTable.innerHTML = `<tr><td colspan="10" class="empty-state">لا توجد بيانات بعد</td></tr>`;
+      destroyProductionCharts();
+      return;
+    }
+
+    ui.productionMetrics.innerHTML = [
+      metricCard("إجمالي الكمية", formatNumber(payload.totalQuantity || 0)),
+      metricCard("إجمالي الدست", formatNumber(payload.totalDozens || 0)),
+      metricCard("عدد السجلات", payload.recordsCount || 0),
+      metricCard("عدد القصص", payload.storiesCount || 0),
+      metricCard("عدد الموديلات", payload.modelsCount || 0),
+      metricCard("عدد الخطوط", payload.linesCount || 0)
+    ].join("");
+
+    ui.productionItemsList.innerHTML = renderScoreList(payload.topItems, "كمية");
+    ui.productionDestinationsList.innerHTML = renderScoreList(payload.topDestinations, "كمية");
+    ui.productionRecordsTable.innerHTML = renderProductionRecords(payload.recentRecords || []);
+    renderProductionCharts(payload);
+  }
+
   function renderFieldAnalytics(payload, movementsPayload) {
     if (!payload) {
       ui.fieldMetrics.innerHTML = "";
@@ -1502,6 +1566,30 @@
     ui.fieldLatestList.innerHTML = renderLatestCollectionList(payload.latestCollections);
       renderMovementsTable(movementsPayload || null);
     renderFieldCharts(payload);
+  }
+
+  function renderProductionRecords(rows) {
+    if (!rows || !rows.length) {
+      return `<tr><td colspan="10" class="empty-state">لا توجد سجلات مطابقة</td></tr>`;
+    }
+    return rows
+      .map(
+        (row) => `
+          <tr>
+            <td>${escapeHtml(formatDate(row.date))}</td>
+            <td>${escapeHtml(row.source || "--")}</td>
+            <td>${escapeHtml(row.lineName || "--")}</td>
+            <td>${escapeHtml(row.storyNo || "--")}</td>
+            <td>${escapeHtml(row.modelCode || "--")}</td>
+            <td>${escapeHtml(row.itemName || "--")}</td>
+            <td>${escapeHtml(row.color || "--")}</td>
+            <td>${escapeHtml(row.size || "--")}</td>
+            <td>${escapeHtml(formatNumber(row.quantity || 0))}</td>
+            <td>${escapeHtml(row.destination || "--")}</td>
+          </tr>
+        `
+      )
+      .join("");
   }
 
   function metricCard(label, value) {
@@ -1733,6 +1821,61 @@
     });
   }
 
+  function renderProductionCharts(payload) {
+    destroyProductionCharts();
+    if (!window.Chart) {
+      return;
+    }
+
+    state.charts.productionDaily = new window.Chart(ui.productionDailyChart, {
+      type: "line",
+      data: {
+        labels: (payload.dailyQuantity || []).map((row) => row.label),
+        datasets: [
+          {
+            label: "الكمية",
+            data: (payload.dailyQuantity || []).map((row) => row.total),
+            borderColor: "#0d4f8b",
+            backgroundColor: "rgba(13, 79, 139, 0.14)",
+            tension: 0.32,
+            fill: true
+          }
+        ]
+      },
+      options: chartOptions()
+    });
+
+    state.charts.productionSource = new window.Chart(ui.productionSourceChart, {
+      type: "doughnut",
+      data: {
+        labels: (payload.bySource || []).map((row) => row.label),
+        datasets: [
+          {
+            data: (payload.bySource || []).map((row) => row.total),
+            backgroundColor: ["#0d4f8b", "#1b8c7a", "#a64c28", "#d18a1d"]
+          }
+        ]
+      },
+      options: chartOptions({ cutout: "62%" })
+    });
+
+    state.charts.productionLines = new window.Chart(ui.productionLinesChart, {
+      type: "bar",
+      data: {
+        labels: (payload.topLines || []).map((row) => row.label),
+        datasets: [
+          {
+            label: "الكمية",
+            data: (payload.topLines || []).map((row) => row.total),
+            backgroundColor: "#a64c28",
+            borderRadius: 10
+          }
+        ]
+      },
+      options: chartOptions({ indexAxis: "y" })
+    });
+  }
+
   function renderMovementsTable(payload) {
     const rows = (payload && payload.movementRows) || [];
     const currentPage = (payload && payload.currentPage) || 1;
@@ -1929,12 +2072,21 @@
   }
 
   function destroyCharts() {
-    Object.keys(state.charts).forEach((key) => {
+    ["trend", "status", "rep", "collectionType"].forEach((key) => {
       if (state.charts[key] && typeof state.charts[key].destroy === "function") {
         state.charts[key].destroy();
       }
+      delete state.charts[key];
     });
-    state.charts = {};
+  }
+
+  function destroyProductionCharts() {
+    ["productionDaily", "productionSource", "productionLines"].forEach((key) => {
+      if (state.charts[key] && typeof state.charts[key].destroy === "function") {
+        state.charts[key].destroy();
+      }
+      delete state.charts[key];
+    });
   }
 
   async function captureLocation(scope, button) {
