@@ -12,7 +12,9 @@
     currentPage: "home",
     customers: [],
     items: [],
+    users: [],
     lookupsReady: false,
+    usersLoaded: false,
     visit: emptyFilters(),
     collection: emptyFilters(),
     orderFilters: emptyFilters(),
@@ -43,6 +45,8 @@
     customerSearch: "",
     itemEditorCode: "",
     itemSearch: "",
+    userEditorId: "",
+    userSearch: "",
     charts: {}
   };
 
@@ -83,6 +87,7 @@
     ui.menuLinks = Array.from(document.querySelectorAll(".menu-link"));
     ui.jumpButtons = Array.from(document.querySelectorAll("[data-jump]"));
     ui.pages = Array.from(document.querySelectorAll("[data-page]"));
+    ui.adminOnlyNodes = Array.from(document.querySelectorAll("[data-admin-only]"));
 
     ui.heroStats = document.getElementById("hero-stats");
     ui.recentOrders = document.getElementById("recent-orders");
@@ -171,6 +176,18 @@
     ui.refreshItems = document.getElementById("refresh-items");
     ui.itemsSearch = document.getElementById("items-search");
     ui.itemsTable = document.getElementById("items-table");
+
+    ui.userForm = document.getElementById("user-form");
+    ui.userFormTitle = document.getElementById("user-form-title");
+    ui.userFormReset = document.getElementById("user-form-reset");
+    ui.userFullName = document.getElementById("user-full-name");
+    ui.userLoginEmail = document.getElementById("user-login-email");
+    ui.userPassword = document.getElementById("user-password");
+    ui.userActive = document.getElementById("user-active");
+    ui.userSubmit = document.getElementById("user-submit");
+    ui.refreshUsers = document.getElementById("refresh-users");
+    ui.usersSearch = document.getElementById("users-search");
+    ui.usersTable = document.getElementById("users-table");
 
     ui.dashboardLock = document.getElementById("dashboard-lock");
     ui.dashboardPanel = document.getElementById("dashboard-panel");
@@ -309,6 +326,14 @@
       renderItemsTable();
     });
 
+    ui.userForm.addEventListener("submit", onSubmitUser);
+    ui.userFormReset.addEventListener("click", resetUserEditor);
+    ui.refreshUsers.addEventListener("click", refreshUsersList);
+    ui.usersSearch.addEventListener("input", function () {
+      state.userSearch = ui.usersSearch.value.trim();
+      renderUsersTable();
+    });
+
     ui.unlockDashboard.addEventListener("click", onUnlockDashboard);
     ui.loadDashboard.addEventListener("click", onLoadDashboard);
     ui.loadProductionDashboard.addEventListener("click", onLoadProductionDashboard);
@@ -346,6 +371,7 @@
 
   async function bootstrap() {
     ui.userEmail.textContent = state.userEmail;
+    applyAdminAccessControls();
     notify("جارٍ تحميل بيانات التشغيل...", "info");
     await Promise.all([loadLookups(true), loadHomeSummary()]);
     renderAll();
@@ -362,7 +388,18 @@
     }
   }
 
+  async function refreshUsersList() {
+    try {
+      await loadUsers(true);
+      renderUsersTable();
+      notify("تم تحديث قائمة المستخدمين.", "success");
+    } catch (error) {
+      notify(error.message || "تعذر تحميل المستخدمين.", "error");
+    }
+  }
+
   function renderAll() {
+    applyAdminAccessControls();
     renderAllFilterGroups();
     renderOrderModelOptions();
     renderOrderLines();
@@ -372,6 +409,7 @@
     renderOrdersTable();
     renderCustomersTable();
     renderItemsTable();
+    renderUsersTable();
     renderLocationSummary("visit");
     renderLocationSummary("collection");
     renderLocationSummary("order");
@@ -388,6 +426,7 @@
     const loggedIn = Boolean(state.token);
     ui.loginScreen.classList.toggle("hidden", loggedIn);
     ui.appScreen.classList.toggle("hidden", !loggedIn);
+    applyAdminAccessControls();
   }
 
   async function onLogin(event) {
@@ -433,7 +472,9 @@
     state.currentPage = "home";
     state.customers = [];
     state.items = [];
+    state.users = [];
     state.lookupsReady = false;
+    state.usersLoaded = false;
     state.visit = emptyFilters();
     state.collection = emptyFilters();
     state.orderFilters = emptyFilters();
@@ -459,11 +500,16 @@
     state.customerSearch = "";
     state.itemEditorCode = "";
     state.itemSearch = "";
+    state.userEditorId = "";
+    state.userSearch = "";
     localStorage.removeItem(STORAGE_TOKEN);
     localStorage.removeItem(STORAGE_EMAIL);
   }
 
   function setPage(pageName) {
+    if (pageName === "users" && !isAdminUser()) {
+      pageName = "home";
+    }
     state.currentPage = pageName;
     ui.menuLinks.forEach((button) => button.classList.toggle("active", button.dataset.screen === pageName));
     ui.pages.forEach((page) => page.classList.toggle("hidden", page.dataset.page !== pageName));
@@ -476,6 +522,7 @@
       "orders-browser": "عرض الطلبيات",
       customers: "إدارة العملاء",
       items: "إدارة المنتجات",
+      users: "إدارة المستخدمين",
       "production-dashboard": "لوحة الإنتاج",
       dashboard: "لوحة التحليلات",
       "field-analytics": "تحليل الزيارات والتحصيلات"
@@ -484,6 +531,9 @@
 
     if (pageName === "production-dashboard" && !state.productionPayload && state.token) {
       onLoadProductionDashboard();
+    }
+    if (pageName === "users" && isAdminUser() && !state.usersLoaded && state.token) {
+      refreshUsersList();
     }
   }
 
@@ -500,6 +550,39 @@
 
   async function loadHomeSummary() {
     state.homeSummary = await apiRequest("/api/home-summary");
+  }
+
+  function isAdminUser() {
+    return String(state.userEmail || "").toLowerCase() === "admin@embrator.com";
+  }
+
+  function applyAdminAccessControls() {
+    const visible = isAdminUser();
+    ui.adminOnlyNodes.forEach((node) => {
+      node.classList.toggle("hidden", !visible);
+    });
+    if (!visible && state.currentPage === "users") {
+      state.currentPage = "home";
+    }
+  }
+
+  async function loadUsers(force) {
+    if (!isAdminUser()) {
+      state.users = [];
+      state.usersLoaded = false;
+      return;
+    }
+    if (state.usersLoaded && !force) {
+      return;
+    }
+
+    const payload = await apiRequest("/api/users");
+    state.users = (payload.users || []).map(normalizeUser).sort((a, b) => {
+      const dateDiff = String(b.created_at || "").localeCompare(String(a.created_at || ""));
+      if (dateDiff !== 0) return dateDiff;
+      return String(a.email || "").localeCompare(String(b.email || ""), "ar");
+    });
+    state.usersLoaded = true;
   }
 
   function renderHomeSummary() {
@@ -1406,6 +1489,113 @@
     }
   }
 
+  function renderUsersTable() {
+    if (!ui.usersTable) {
+      return;
+    }
+    if (!isAdminUser()) {
+      ui.usersTable.innerHTML = `<tr><td colspan="5" class="empty-state">إدارة المستخدمين متاحة لحساب الأدمن فقط</td></tr>`;
+      return;
+    }
+
+    const needle = state.userSearch.toLowerCase();
+    const rows = state.users.filter((row) => {
+      if (!needle) return true;
+      return [row.full_name, row.email].some((value) => String(value || "").toLowerCase().includes(needle));
+    });
+
+    if (!rows.length) {
+      ui.usersTable.innerHTML = `<tr><td colspan="5" class="empty-state">لا توجد نتائج</td></tr>`;
+      return;
+    }
+
+    ui.usersTable.innerHTML = rows
+      .map(
+        (row) => `
+          <tr>
+            <td>${escapeHtml(row.full_name || "--")}</td>
+            <td>${escapeHtml(row.email || "")}</td>
+            <td><span class="${row.is_active === false ? "pill pill-cancelled" : "pill pill-confirmed"}">${escapeHtml(
+              row.is_active === false ? "غير نشط" : "نشط"
+            )}</span></td>
+            <td>${escapeHtml(formatDay(row.created_at))}</td>
+            <td><button class="btn btn-soft user-edit" data-id="${escapeHtml(row.id || "")}" type="button">تعديل</button></td>
+          </tr>
+        `
+      )
+      .join("");
+
+    Array.from(document.querySelectorAll(".user-edit")).forEach((button) => {
+      button.addEventListener("click", function () {
+        fillUserEditor(button.dataset.id);
+      });
+    });
+  }
+
+  function fillUserEditor(id) {
+    const user = state.users.find((entry) => entry.id === id);
+    if (!user) {
+      return;
+    }
+
+    state.userEditorId = user.id;
+    ui.userFormTitle.textContent = `تعديل المستخدم: ${user.email}`;
+    ui.userFullName.value = user.full_name || "";
+    ui.userLoginEmail.value = user.email || "";
+    ui.userPassword.value = "";
+    ui.userActive.value = user.is_active === false ? "false" : "true";
+    ui.userSubmit.textContent = "حفظ التعديل";
+    setPage("users");
+  }
+
+  function resetUserEditor() {
+    state.userEditorId = "";
+    ui.userForm.reset();
+    ui.userFormTitle.textContent = "مستخدم جديد";
+    ui.userActive.value = "true";
+    ui.userSubmit.textContent = "حفظ المستخدم";
+  }
+
+  async function onSubmitUser(event) {
+    event.preventDefault();
+    const payload = {
+      fullName: ui.userFullName.value.trim(),
+      email: ui.userLoginEmail.value.trim(),
+      password: ui.userPassword.value,
+      isActive: ui.userActive.value === "true"
+    };
+
+    if (!payload.email) {
+      notify("البريد الإلكتروني مطلوب.", "error");
+      return;
+    }
+    if (!state.userEditorId && !payload.password) {
+      notify("كلمة المرور مطلوبة عند إنشاء مستخدم جديد.", "error");
+      return;
+    }
+
+    const idleLabel = state.userEditorId ? "حفظ التعديل" : "حفظ المستخدم";
+    setBusy(ui.userSubmit, true, "جارٍ الحفظ...");
+    try {
+      if (state.userEditorId) {
+        await apiRequest("/api/users/" + encodeURIComponent(state.userEditorId), {
+          method: "PUT",
+          body: payload
+        });
+        notify("تم تحديث بيانات المستخدم.", "success");
+      } else {
+        await apiRequest("/api/users", { method: "POST", body: payload });
+        notify("تمت إضافة المستخدم.", "success");
+      }
+      resetUserEditor();
+      await refreshUsersList();
+    } catch (error) {
+      notify(error.message || "تعذر حفظ المستخدم.", "error");
+    } finally {
+      setBusy(ui.userSubmit, false, idleLabel);
+    }
+  }
+
   async function onUnlockDashboard() {
     setBusy(ui.unlockDashboard, true, "جارٍ التحقق...");
     try {
@@ -1574,7 +1764,7 @@
     renderProductionCharts(payload);
   }
 
-  function renderProductionDashboardV2(payload) {
+function renderProductionDashboardV2(payload) {
     if (!payload) {
       ui.productionMetrics.innerHTML = "";
       if (ui.productionOverviewBoard) ui.productionOverviewBoard.innerHTML = "";
@@ -1594,20 +1784,20 @@
     hydrateProductionFiltersV2(payload.filterOptions || {});
 
     ui.productionMetrics.innerHTML = [
-      metricCard("إجمالي الدستة", formatNumber(payload.totalDozens || 0)),
+      metricCard("إجمالي الدستة", formatRoundedNumber(payload.totalDozens || 0)),
       metricCard("عدد السجلات", payload.recordsCount || 0),
       metricCard("عدد القصص", payload.storiesCount || 0),
       metricCard("عدد الموديلات", payload.modelsCount || 0),
       metricCard("عدد الخطوط", payload.linesCount || 0),
-      metricCard("متوسط الدستة/سجل", formatNumber(payload.averageDozensPerRecord || 0)),
-      metricCard("إجمالي الدستة للفترة", formatNumber(payload.overallTotalDozens || 0))
+      metricCard("متوسط الدستة/سجل", formatRoundedNumber(payload.averageDozensPerRecord || 0)),
+      metricCard("إجمالي الدستة للفترة", formatRoundedNumber(payload.overallTotalDozens || 0))
     ].join("");
 
-    if (ui.productionModelsList) ui.productionModelsList.innerHTML = renderScoreList(payload.topModels, "دستة");
-    if (ui.productionItemsList) ui.productionItemsList.innerHTML = renderScoreList(payload.topItems, "دستة");
-    if (ui.productionDestinationsList) ui.productionDestinationsList.innerHTML = renderScoreList(payload.topDestinations, "دستة");
-    if (ui.productionSizesList) ui.productionSizesList.innerHTML = renderScoreList(payload.sizeBreakdown, "دستة");
-    if (ui.productionColorsList) ui.productionColorsList.innerHTML = renderScoreList(payload.topColors, "دستة");
+    if (ui.productionModelsList) ui.productionModelsList.innerHTML = renderScoreList(payload.topModels, "دستة", formatRoundedNumber);
+    if (ui.productionItemsList) ui.productionItemsList.innerHTML = renderScoreList(payload.topItems, "دستة", formatRoundedNumber);
+    if (ui.productionDestinationsList) ui.productionDestinationsList.innerHTML = renderScoreList(payload.topDestinations, "دستة", formatRoundedNumber);
+    if (ui.productionSizesList) ui.productionSizesList.innerHTML = renderScoreList(payload.sizeBreakdown, "دستة", formatRoundedNumber);
+    if (ui.productionColorsList) ui.productionColorsList.innerHTML = renderScoreList(payload.topColors, "دستة", formatRoundedNumber);
     ui.productionRecordsTable.innerHTML = renderProductionRecordsV2(payload.recentRecords || []);
     renderProductionChartsV2(payload);
   }
@@ -1658,7 +1848,7 @@
     }
   }
 
-  function renderProductionOverviewV2(payload) {
+function renderProductionOverviewV2(payload) {
     if (ui.productionHeadlineTitle) {
       ui.productionHeadlineTitle.textContent =
         payload.selectedSource && payload.selectedSource !== "الكل"
@@ -1672,7 +1862,7 @@
           : "الرئيسية تعرض توزيع الإنتاج على الجاهز والداخلي ووينكز بالدستة.";
     }
     if (ui.productionOverallTotal) {
-      ui.productionOverallTotal.textContent = formatNumber(payload.overallTotalDozens || 0);
+      ui.productionOverallTotal.textContent = formatRoundedNumber(payload.overallTotalDozens || 0);
     }
     if (ui.productionOverviewBoard) {
       ui.productionOverviewBoard.innerHTML = (payload.sourceCards || []).map(renderProductionSourceColumnV2).join("");
@@ -1687,14 +1877,14 @@
     setActiveProductionSourceTab();
   }
 
-  function renderProductionSourceColumnV2(card) {
+function renderProductionSourceColumnV2(card) {
     const isActive = card.source === state.productionSourceTab;
     const flowRows = (card.topDestinations && card.topDestinations.length ? card.topDestinations : card.topLines || []).slice(0, 6);
     return `
       <article class="production-source-column ${isActive ? "active" : ""}" data-production-source-card="${escapeHtml(card.source)}">
         <header>
           <span>${escapeHtml(card.source)}</span>
-          <strong>${escapeHtml(formatNumber(card.totalDozens || 0))}</strong>
+          <strong>${escapeHtml(formatRoundedNumber(card.totalDozens || 0))}</strong>
         </header>
         <div class="production-source-meta">
           <small>إجمالي الدستة</small>
@@ -1708,7 +1898,7 @@
                     (row) => `
                       <div class="production-flow-step">
                         <span>${escapeHtml(row.label || "--")}</span>
-                        <strong>${escapeHtml(formatNumber(row.total || 0))}</strong>
+                        <strong>${escapeHtml(formatRoundedNumber(row.total || 0))}</strong>
                       </div>
                     `
                   )
@@ -1757,7 +1947,7 @@
     return new Intl.DateTimeFormat("ar-EG", { month: "long", year: "numeric" }).format(date);
   }
 
-  function renderProductionRecordsV2(rows) {
+function renderProductionRecordsV2(rows) {
     if (!rows || !rows.length) {
       return `<tr><td colspan="11" class="empty-state">لا توجد سجلات مطابقة</td></tr>`;
     }
@@ -1773,7 +1963,7 @@
             <td>${escapeHtml(row.itemName || "--")}</td>
             <td>${escapeHtml(row.color || "--")}</td>
             <td>${escapeHtml(row.size || "--")}</td>
-            <td>${escapeHtml(formatNumber(row.dozens || 0))}</td>
+            <td>${escapeHtml(formatRoundedNumber(row.dozens || 0))}</td>
             <td>${escapeHtml(formatNumber(row.quantity || 0))}</td>
             <td>${escapeHtml(row.destination || "--")}</td>
           </tr>
@@ -1913,10 +2103,12 @@
     `;
   }
 
-  function renderScoreList(rows, suffix) {
+function renderScoreList(rows, suffix, formatterFn) {
     if (!rows || !rows.length) {
       return emptyInline("لا توجد بيانات");
     }
+
+    const formatter = typeof formatterFn === "function" ? formatterFn : formatNumber;
 
     return rows
       .map(
@@ -1926,7 +2118,7 @@
               <strong>${escapeHtml(row.label || row.rep || "--")}</strong>
               <small>${escapeHtml(suffix)}</small>
             </div>
-            <span class="pill pill-accent">${escapeHtml(formatNumber(row.total || 0))}</span>
+            <span class="pill pill-accent">${escapeHtml(formatter(row.total || 0))}</span>
           </article>
         `
       )
@@ -2581,6 +2773,16 @@
     };
   }
 
+  function normalizeUser(entry) {
+    return {
+      id: entry.id || "",
+      email: entry.email || "",
+      full_name: entry.full_name || "",
+      is_active: entry.is_active !== false,
+      created_at: entry.created_at || ""
+    };
+  }
+
   function findCustomer(code) {
     return state.customers.find((entry) => entry.code === code) || null;
   }
@@ -2650,8 +2852,12 @@
     }).format(Number(value || 0));
   }
 
-  function formatNumber(value) {
+function formatNumber(value) {
     return new Intl.NumberFormat("ar-EG", { maximumFractionDigits: 2 }).format(Number(value || 0));
+  }
+
+  function formatRoundedNumber(value) {
+    return new Intl.NumberFormat("ar-EG", { maximumFractionDigits: 0 }).format(Math.round(Number(value || 0)));
   }
 
   function formatDate(value) {

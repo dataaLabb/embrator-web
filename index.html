@@ -93,6 +93,7 @@
               <button class="menu-link" data-screen="orders-browser">عرض الطلبيات</button>
               <button class="menu-link" data-screen="customers">العملاء</button>
               <button class="menu-link" data-screen="items">المنتجات</button>
+              <button class="menu-link" data-screen="users" data-admin-only="true">المستخدمون</button>
               <button class="menu-link" data-screen="production-dashboard">لوحة الإنتاج</button>
               <button class="menu-link" data-screen="dashboard">لوحة التحليلات</button>
               <button class="menu-link" data-screen="field-analytics">تحليل الزيارات والتحصيلات</button>
@@ -154,6 +155,10 @@
               <button class="quick-card card-customers" data-jump="customers">
                 <strong>العملاء</strong>
                 <span>إضافة عميل جديد، استعراض العملاء، وتعديل البيانات بسهولة.</span>
+              </button>
+              <button class="quick-card card-dashboard" data-jump="users" data-admin-only="true">
+                <strong>المستخدمون</strong>
+                <span>إضافة حسابات دخول جديدة وتعديل البيانات وكلمات المرور.</span>
               </button>
               <button class="quick-card card-browser" data-jump="production-dashboard">
                 <strong>لوحة الإنتاج</strong>
@@ -670,6 +675,82 @@
                     <tbody id="items-table">
                       <tr>
                         <td colspan="6" class="empty-state">لا توجد بيانات بعد</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="glass page-section hidden" data-page="users" data-admin-only="true">
+            <div class="section-head">
+              <h2>إدارة المستخدمين</h2>
+              <p>أضف حسابات دخول جديدة، عدّل البيانات، وغيّر كلمات المرور من نفس الموقع.</p>
+            </div>
+
+            <div class="split-browser">
+              <form id="user-form" class="sub-card stack-gap">
+                <div class="card-inline-head">
+                  <div>
+                    <h3 id="user-form-title">مستخدم جديد</h3>
+                    <p class="muted">البريد الإلكتروني هو اسم الدخول للموقع.</p>
+                  </div>
+                  <button id="user-form-reset" class="btn btn-soft" type="button">مسح</button>
+                </div>
+                <div class="filters-grid">
+                  <label class="field">
+                    <span>الاسم</span>
+                    <input id="user-full-name" type="text" placeholder="مثال: Ahmed Ali" />
+                  </label>
+                  <label class="field">
+                    <span>البريد الإلكتروني</span>
+                    <input id="user-login-email" type="email" placeholder="user@embrator.com" required />
+                  </label>
+                  <label class="field">
+                    <span>كلمة المرور</span>
+                    <input id="user-password" type="password" placeholder="4 أحرف أو أكثر" />
+                  </label>
+                  <label class="field inline-check">
+                    <span>الحالة</span>
+                    <select id="user-active">
+                      <option value="true">نشط</option>
+                      <option value="false">غير نشط</option>
+                    </select>
+                  </label>
+                </div>
+                <p class="muted">عند تعديل مستخدم موجود، اترك كلمة المرور فارغة للإبقاء عليها.</p>
+                <div class="actions-row">
+                  <button id="user-submit" class="btn btn-primary" type="submit">حفظ المستخدم</button>
+                </div>
+              </form>
+
+              <div class="sub-card stack-gap">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>قائمة المستخدمين</h3>
+                    <p class="muted">ابحث بالاسم أو البريد، ثم اضغط تعديل.</p>
+                  </div>
+                  <button id="refresh-users" class="btn btn-soft" type="button">تحديث</button>
+                </div>
+                <label class="field">
+                  <span>بحث</span>
+                  <input id="users-search" type="text" placeholder="ابحث بالاسم أو البريد" />
+                </label>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>الاسم</th>
+                        <th>البريد</th>
+                        <th>الحالة</th>
+                        <th>تاريخ الإضافة</th>
+                        <th>الإجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody id="users-table">
+                      <tr>
+                        <td colspan="5" class="empty-state">لا توجد بيانات بعد</td>
                       </tr>
                     </tbody>
                   </table>

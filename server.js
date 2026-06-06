@@ -154,6 +154,13 @@ function authRequired(req, res, next) {
   next();
 }
 
+function adminRequired(req, res, next) {
+  if (String(req.user?.email || "").toLowerCase() !== "admin@embrator.com") {
+    return res.status(403).json({ message: "Ù‡Ø°Ù‡ Ø§Ù„ØµÙØ­Ø© Ù…ØªØ§Ø­Ø© Ù„Ù„Ø£Ø¯Ù…Ù† ÙÙ‚Ø·." });
+  }
+  next();
+}
+
 function ordersScreenRequired(req, res, next) {
   const token = req.headers["x-screen-token"] || "";
   if (!verifyScreenToken(token, "orders")) {
@@ -463,6 +470,107 @@ app.post("/api/auth/login", rateLimit(10, 15 * 60_000), async (req, res) => {
     const token = signToken({ userId: user.id, email: user.email });
     res.json({ token, user: { id: user.id, email: user.email, fullName: user.full_name } });
   } catch (error) {
+    serverError(res, error);
+  }
+});
+
+app.get("/api/users", authRequired, adminRequired, async (_req, res) => {
+  try {
+    const users = await query(
+      `select id, email, full_name, is_active, created_at
+       from app_users
+       order by created_at desc, email asc`
+    );
+    res.json({ users });
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
+app.post("/api/users", authRequired, adminRequired, async (req, res) => {
+  try {
+    const p = req.body || {};
+    const email = String(p.email || "").trim().toLowerCase();
+    const password = String(p.password || "");
+    const fullName = String(p.fullName || "").trim();
+    const isActive = boolValue(p.isActive);
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ ÙˆÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ù…Ø·Ù„ÙˆØ¨Ø§Ù†." });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "ØµÙŠØºØ© Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ ØºÙŠØ± ØµØ­ÙŠØ­Ø©." });
+    }
+    if (password.length < 4) {
+      return res.status(400).json({ message: "ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙŠØ¬Ø¨ Ø£Ù† ØªÙƒÙˆÙ† 4 Ø£Ø­Ø±Ù Ø£Ùˆ Ø£ÙƒØ«Ø±." });
+    }
+
+    const rows = await query(
+      `insert into app_users (email, full_name, password_hash, is_active)
+       values ($1, $2, crypt($3, gen_salt('bf')), $4)
+       returning id, email, full_name, is_active, created_at`,
+      [email, fullName, password, isActive]
+    );
+    res.json({ user: rows[0] });
+  } catch (error) {
+    if (error?.code === "23505") {
+      return res.status(409).json({ message: "Ù‡Ø°Ø§ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ù…Ø³Ø¬Ù„ Ù…Ø³Ø¨Ù‚Ù‹Ø§." });
+    }
+    serverError(res, error);
+  }
+});
+
+app.put("/api/users/:id", authRequired, adminRequired, async (req, res) => {
+  try {
+    const p = req.body || {};
+    const email = String(p.email || "").trim().toLowerCase();
+    const fullName = String(p.fullName || "").trim();
+    const password = String(p.password || "");
+    const isActive = boolValue(p.isActive);
+
+    if (!email) {
+      return res.status(400).json({ message: "Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù…Ø·Ù„ÙˆØ¨." });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "ØµÙŠØºØ© Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ ØºÙŠØ± ØµØ­ÙŠØ­Ø©." });
+    }
+    if (password && password.length < 4) {
+      return res.status(400).json({ message: "ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙŠØ¬Ø¨ Ø£Ù† ØªÙƒÙˆÙ† 4 Ø£Ø­Ø±Ù Ø£Ùˆ Ø£ÙƒØ«Ø±." });
+    }
+
+    const existingRows = await query(
+      `select id, email, is_active from app_users where id = $1 limit 1`,
+      [req.params.id]
+    );
+    if (!existingRows.length) {
+      return res.status(404).json({ message: "Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯." });
+    }
+    const existing = existingRows[0];
+    if (String(existing.id) === String(req.user.userId) && email !== String(req.user.email || "").toLowerCase()) {
+      return res.status(400).json({ message: "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØºÙŠÙŠØ± Ø¨Ø±ÙŠØ¯ Ø­Ø³Ø§Ø¨ Ø§Ù„Ø£Ø¯Ù…Ù† Ø§Ù„Ø­Ø§Ù„ÙŠ." });
+    }
+    if (!isActive && String(existing.id) === String(req.user.userId)) {
+      return res.status(400).json({ message: "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ø­Ø§Ù„ÙŠ." });
+    }
+
+    const rows = await query(
+      `update app_users
+       set email = $2,
+           full_name = $3,
+           is_active = $4,
+           password_hash = case
+             when $5 <> '' then crypt($5, gen_salt('bf'))
+             else password_hash
+           end
+       where id = $1
+       returning id, email, full_name, is_active, created_at`,
+      [req.params.id, email, fullName, isActive, password]
+    );
+    res.json({ user: rows[0] });
+  } catch (error) {
+    if (error?.code === "23505") {
+      return res.status(409).json({ message: "Ù‡Ø°Ø§ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ù…Ø³Ø¬Ù„ Ù…Ø³Ø¨Ù‚Ù‹Ø§." });
+    }
     serverError(res, error);
   }
 });
