@@ -3977,7 +3977,7 @@ function renderScoreList(rows, suffix, formatterFn) {
         reflectSession();
         throw new Error("انتهت صلاحية الجلسة. يرجى تسجيل الدخول مجددًا.");
       }
-      throw new Error((data && data.message) || "حدث خطأ في الطلب.");
+      throw new Error(extractApiErrorMessage(response, data, text));
     }
     return data;
   }
@@ -4182,8 +4182,36 @@ function formatNumber(value) {
     try {
       return JSON.parse(text);
     } catch (_error) {
-      return { message: text };
+      return null;
     }
+  }
+
+  function isLikelyHtml(text) {
+    if (!text) return false;
+    const sample = String(text).trim().slice(0, 200).toLowerCase();
+    return (
+      sample.startsWith("<!doctype html") ||
+      sample.startsWith("<html") ||
+      sample.includes("<head") ||
+      sample.includes("<body")
+    );
+  }
+
+  function extractApiErrorMessage(response, data, text) {
+    if (response.status === 502 || response.status === 503 || response.status === 504) {
+      return "الخدمة غير متاحة حاليًا من الخادم. حاول مرة أخرى بعد قليل.";
+    }
+
+    const message = data && typeof data.message === "string" ? data.message.trim() : "";
+    if (message && !isLikelyHtml(message)) {
+      return message;
+    }
+
+    if (isLikelyHtml(text)) {
+      return "الخادم أعاد صفحة خطأ غير متوقعة. حاول مرة أخرى بعد قليل.";
+    }
+
+    return "حدث خطأ في الطلب.";
   }
 
   async function readFileAsDataUrl(file) {
