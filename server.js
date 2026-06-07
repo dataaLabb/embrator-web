@@ -1008,15 +1008,8 @@ app.post("/api/orders/line", authRequired, async (req, res) => {
          and item_code = $2
          and coalesce(color,'') = $3
          and coalesce(unit,'') = $4
-         and coalesce(size_s,0) = $5
-         and coalesce(size_m,0) = $6
-         and coalesce(size_l,0) = $7
-         and coalesce(size_xl,0) = $8
-         and coalesce(size_2xl,0) = $9
-         and coalesce(size_3xl,0) = $10
-         and coalesce(size_4xl,0) = $11
        limit 1`,
-      [orderId, item.code, color, item.unit || "", sizeS, sizeM, sizeL, sizeXl, size2xl, size3xl, size4xl]
+      [orderId, item.code, color, item.unit || ""]
     );
 
     if (existingLine.rows.length) {

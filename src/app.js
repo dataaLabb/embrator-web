@@ -1648,7 +1648,7 @@
     }
   }
 
-  function exportOrdersExcel() {
+  async function exportOrdersExcel() {
     const rows = filteredOrdersList();
     if (!rows.length) {
       notify("No orders to export.", "error");
@@ -1658,21 +1658,79 @@
       notify("Excel export library is not loaded.", "error");
       return;
     }
-    const exportRows = rows.map((order) => ({
-      order_code: order.order_code || "",
-      customer_code: order.customer_code || "",
-      customer_name: order.customer_name || "",
-      rep: order.rep || "",
-      status: statusLabel(order.status),
-      created_at: order.created_at ? new Date(order.created_at).toLocaleString("en-CA") : "",
-      notes: order.notes || "",
-      address: order.arabic_address || order.address || ""
-    }));
-    const worksheet = window.XLSX.utils.json_to_sheet(exportRows);
-    const workbook = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    window.XLSX.writeFile(workbook, `orders-${stamp}.xlsx`);
+    setBusy(ui.exportOrders, true, "Exporting...");
+    try {
+      const details = await Promise.all(
+        rows.map((order) =>
+          apiRequest("/api/orders/" + encodeURIComponent(order.order_code), {}, { "x-screen-token": state.ordersScreenToken })
+        )
+      );
+
+      const exportRows = details.flatMap((payload) => {
+        const order = payload.order || {};
+        const lines = Array.isArray(payload.lines) ? payload.lines : [];
+        if (!lines.length) {
+          return [{
+            order_code: order.order_code || "",
+            customer_code: order.customer_code || "",
+            customer_name: order.customer_name || "",
+            rep: order.rep || "",
+            status: statusLabel(order.status),
+            created_at: order.created_at ? new Date(order.created_at).toLocaleString("en-CA") : "",
+            notes: order.notes || "",
+            address: order.arabic_address || order.address || "",
+            item_code: "",
+            model: "",
+            item_name: "",
+            color: "",
+            unit: "",
+            qty: 0,
+            size_s: 0,
+            size_m: 0,
+            size_l: 0,
+            size_xl: 0,
+            size_2xl: 0,
+            size_3xl: 0,
+            size_4xl: 0
+          }];
+        }
+
+        return lines.map((line) => ({
+          order_code: order.order_code || "",
+          customer_code: order.customer_code || "",
+          customer_name: order.customer_name || "",
+          rep: order.rep || "",
+          status: statusLabel(order.status),
+          created_at: order.created_at ? new Date(order.created_at).toLocaleString("en-CA") : "",
+          notes: order.notes || "",
+          address: order.arabic_address || order.address || "",
+          item_code: line.item_code || "",
+          model: line.model || "",
+          item_name: line.item_name || "",
+          color: line.color || "",
+          unit: line.unit || "",
+          qty: Number(line.qty || 0),
+          size_s: Number(line.size_s || 0),
+          size_m: Number(line.size_m || 0),
+          size_l: Number(line.size_l || 0),
+          size_xl: Number(line.size_xl || 0),
+          size_2xl: Number(line.size_2xl || 0),
+          size_3xl: Number(line.size_3xl || 0),
+          size_4xl: Number(line.size_4xl || 0)
+        }));
+      });
+
+      const worksheet = window.XLSX.utils.json_to_sheet(exportRows);
+      const workbook = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      window.XLSX.writeFile(workbook, `orders-${stamp}.xlsx`);
+      notify("Orders exported.", "success");
+    } catch (error) {
+      notify(error.message || "Could not export orders.", "error");
+    } finally {
+      setBusy(ui.exportOrders, false, "تصدير Excel");
+    }
   }
 
   function renderOrderDetailsDialog(order, lines) {
