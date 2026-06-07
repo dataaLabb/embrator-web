@@ -18,7 +18,7 @@
     visit: emptyFilters(),
     collection: emptyFilters(),
     orderFilters: emptyFilters(),
-    orderDraft: { id: "", code: "", lines: [] },
+    orderDraft: { id: "", code: "", lines: [], status: "", notes: "" },
     ordersUnlocked: false,
     ordersScreenToken: "",
     dashboardUnlocked: false,
@@ -47,6 +47,7 @@
     itemEditorCode: "",
     itemSearch: "",
     itemsPage: 1,
+    itemVariantRows: [],
     userEditorId: "",
     userSearch: "",
     charts: {}
@@ -125,6 +126,7 @@
     ui.orderSize = document.getElementById("order-size");
     ui.orderUnit = document.getElementById("order-unit");
     ui.orderQty = document.getElementById("order-qty");
+    ui.orderNotes = document.getElementById("order-notes");
     ui.addOrderLine = document.getElementById("add-order-line");
     ui.orderLines = document.getElementById("order-lines");
     ui.orderCodeLabel = document.getElementById("order-code-label");
@@ -144,6 +146,7 @@
     ui.ordersFrom = document.getElementById("orders-from");
     ui.ordersTo = document.getElementById("orders-to");
     ui.loadOrders = document.getElementById("load-orders");
+    ui.exportOrders = document.getElementById("export-orders");
     ui.showAllOrders = document.getElementById("show-all-orders");
     ui.ordersSummaryTable = document.getElementById("orders-summary-table");
     ui.ordersTable = document.getElementById("orders-table");
@@ -200,6 +203,12 @@
     ui.itemActive = document.getElementById("item-active");
     ui.itemDescription = document.getElementById("item-description");
     ui.itemVariants = document.getElementById("item-variants");
+    ensureItemVariantEditor();
+    ui.itemVariantColor = document.getElementById("item-variant-color");
+    ui.itemVariantSize = document.getElementById("item-variant-size");
+    ui.itemVariantUnit = document.getElementById("item-variant-unit");
+    ui.itemAddVariant = document.getElementById("item-add-variant");
+    ui.itemVariantsTable = document.getElementById("item-variants-table");
     ui.itemSubmit = document.getElementById("item-submit");
     ui.refreshItems = document.getElementById("refresh-items");
     ui.itemsSearch = document.getElementById("items-search");
@@ -299,6 +308,64 @@
     ui.chequePreviewImage = document.getElementById("cheque-preview-image");
   }
 
+  function ensureItemVariantEditor() {
+    const textarea = document.getElementById("item-variants");
+    if (!textarea || document.getElementById("item-variants-table")) {
+      return;
+    }
+
+    const hostLabel = textarea.closest("label");
+    if (hostLabel) {
+      hostLabel.classList.add("hidden");
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "field field-span stack-gap";
+    wrapper.innerHTML = `
+      <span>&#1605;&#1578;&#1594;&#1610;&#1585;&#1575;&#1578; &#1575;&#1604;&#1605;&#1606;&#1578;&#1580;</span>
+      <div class="filters-grid compact-grid">
+        <label class="field">
+          <span>&#1575;&#1604;&#1604;&#1608;&#1606;</span>
+          <input id="item-variant-color" type="text" />
+        </label>
+        <label class="field">
+          <span>&#1575;&#1604;&#1605;&#1602;&#1575;&#1587;</span>
+          <input id="item-variant-size" type="text" />
+        </label>
+        <label class="field">
+          <span>&#1575;&#1604;&#1608;&#1581;&#1583;&#1577;</span>
+          <input id="item-variant-unit" type="text" />
+        </label>
+        <div class="field field-button">
+          <span>&nbsp;</span>
+          <button id="item-add-variant" class="btn btn-soft" type="button">&#1573;&#1590;&#1575;&#1601;&#1577; &#1575;&#1604;&#1605;&#1578;&#1594;&#1610;&#1585;</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>&#1575;&#1604;&#1603;&#1608;&#1583;</th>
+              <th>&#1575;&#1604;&#1604;&#1608;&#1606;</th>
+              <th>&#1575;&#1604;&#1605;&#1602;&#1575;&#1587;</th>
+              <th>&#1575;&#1604;&#1608;&#1581;&#1583;&#1577;</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="item-variants-table">
+            <tr>
+              <td colspan="5" class="empty-state">&#1604;&#1575; &#1578;&#1608;&#1580;&#1583; &#1605;&#1578;&#1594;&#1610;&#1585;&#1575;&#1578; &#1576;&#1593;&#1583;</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    if (hostLabel && hostLabel.parentNode) {
+      hostLabel.parentNode.insertBefore(wrapper, hostLabel.nextSibling);
+    }
+  }
+
   function bindEvents() {
     ui.loginForm.addEventListener("submit", onLogin);
     ui.logoutButton.addEventListener("click", logout);
@@ -325,12 +392,17 @@
     ui.orderModel.addEventListener("change", renderOrderItemOptions);
     ui.orderItem.addEventListener("change", renderOrderColorOptions);
     ui.orderColor.addEventListener("change", renderOrderVariantDetails);
+    ui.orderQty.addEventListener("change", function () {
+      const nextQty = Math.max(1, Math.round(Number(ui.orderQty.value || 1)));
+      ui.orderQty.value = String(nextQty);
+    });
     ui.addOrderLine.addEventListener("click", onAddOrderLine);
     ui.confirmOrder.addEventListener("click", onConfirmOrder);
     ui.cancelOrder.addEventListener("click", onCancelOrder);
 
     ui.unlockOrders.addEventListener("click", onUnlockOrders);
     ui.loadOrders.addEventListener("click", onLoadOrders);
+    ui.exportOrders.addEventListener("click", exportOrdersExcel);
     ui.ordersRepFilter.addEventListener("change", function () {
       state.ordersRepFilter = ui.ordersRepFilter.value;
       renderOrdersTable();
@@ -343,6 +415,9 @@
 
     ui.customerForm.addEventListener("submit", onSubmitCustomer);
     ui.customerFormReset.addEventListener("click", resetCustomerEditor);
+    ui.customerRep.addEventListener("change", () => syncCustomerSectorOptions());
+    ui.customerSector.addEventListener("change", () => syncCustomerAreaOptions());
+    ui.customerArea.addEventListener("change", () => syncCustomerAreaCode());
     ui.refreshCustomers.addEventListener("click", refreshLookupsAndLists);
     ui.customersSearch.addEventListener("input", function () {
       state.customerSearch = ui.customersSearch.value.trim();
@@ -352,6 +427,13 @@
 
     ui.itemForm.addEventListener("submit", onSubmitItem);
     ui.itemFormReset.addEventListener("click", resetItemEditor);
+    ui.itemAddVariant.addEventListener("click", onAddItemVariant);
+    ui.itemCode.addEventListener("input", renderItemVariantRows);
+    ui.itemUnit.addEventListener("input", function () {
+      if (ui.itemVariantUnit && !ui.itemVariantUnit.value.trim()) {
+        ui.itemVariantUnit.value = ui.itemUnit.value.trim();
+      }
+    });
     ui.refreshItems.addEventListener("click", refreshLookupsAndLists);
     ui.itemsSearch.addEventListener("input", function () {
       state.itemSearch = ui.itemsSearch.value.trim();
@@ -434,6 +516,7 @@
   function renderAll() {
     applyAdminAccessControls();
     renderAllFilterGroups();
+    renderCustomerEditorOptions();
     renderOrderModelOptions();
     renderOrderLines();
     renderHomeSummary();
@@ -441,6 +524,7 @@
     renderOrdersSummaryTable();
     renderOrdersTable();
     renderCustomersTable();
+    renderItemVariantRows();
     renderItemsTable();
     renderUsersTable();
     renderLocationSummary("visit");
@@ -511,7 +595,7 @@
     state.visit = emptyFilters();
     state.collection = emptyFilters();
     state.orderFilters = emptyFilters();
-    state.orderDraft = { id: "", code: "", lines: [] };
+    state.orderDraft = { id: "", code: "", lines: [], status: "", notes: "" };
     state.ordersUnlocked = false;
     state.ordersScreenToken = "";
     state.dashboardUnlocked = false;
@@ -533,8 +617,10 @@
     state.customerSearch = "";
     state.itemEditorCode = "";
     state.itemSearch = "";
+    state.itemVariantRows = [];
     state.userEditorId = "";
     state.userSearch = "";
+    if (ui.orderNotes) ui.orderNotes.value = "";
     localStorage.removeItem(STORAGE_TOKEN);
     localStorage.removeItem(STORAGE_EMAIL);
   }
@@ -832,6 +918,95 @@
     `;
   }
 
+  function fillNativeSelect(select, options, selectedValue, placeholder) {
+    if (!select) return;
+    const list = (options || []).map((option) => (typeof option === "string" ? { value: option, label: option } : option));
+    select.innerHTML =
+      `<option value="">${escapeHtml(placeholder || "Choose")}</option>` +
+      list
+        .map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`)
+        .join("");
+    select.value = selectedValue || "";
+  }
+
+  function renderCustomerEditorOptions(prefill) {
+    const current = prefill || {
+      rep: ui.customerRep ? ui.customerRep.value : "",
+      repCode: ui.customerRepCode ? ui.customerRepCode.value : "",
+      sector: ui.customerSector ? ui.customerSector.value : "",
+      sectorCode: ui.customerSectorCode ? ui.customerSectorCode.value : "",
+      area: ui.customerArea ? ui.customerArea.value : "",
+      areaCode: ui.customerAreaCode ? ui.customerAreaCode.value : ""
+    };
+    const reps = unique(state.customers.map((entry) => entry.rep).filter(Boolean)).map((rep) => {
+      const match = state.customers.find((entry) => entry.rep === rep && entry.rep_code);
+      return { value: rep, label: rep, code: match ? match.rep_code : "" };
+    });
+    fillNativeSelect(ui.customerRep, reps, current.rep, "اختر المندوب");
+    syncCustomerSectorOptions(current);
+  }
+
+  function syncCustomerSectorOptions(prefill) {
+    const current = prefill || {
+      sector: ui.customerSector ? ui.customerSector.value : "",
+      sectorCode: ui.customerSectorCode ? ui.customerSectorCode.value : "",
+      area: ui.customerArea ? ui.customerArea.value : "",
+      areaCode: ui.customerAreaCode ? ui.customerAreaCode.value : ""
+    };
+    const selectedRep = ui.customerRep ? ui.customerRep.value : "";
+    const repRows = state.customers.filter((entry) => !selectedRep || entry.rep === selectedRep);
+    const repMeta = repRows.find((entry) => entry.rep_code);
+    if (ui.customerRepCode) {
+      ui.customerRepCode.value = repMeta ? repMeta.rep_code || "" : current.repCode || "";
+    }
+
+    const sectors = unique(repRows.map((entry) => entry.sector).filter(Boolean)).map((sector) => {
+      const match = repRows.find((entry) => entry.sector === sector && entry.sector_code);
+      return { value: sector, label: sector, code: match ? match.sector_code : "" };
+    });
+    fillNativeSelect(ui.customerSector, sectors, current.sector, "اختر القطاع");
+    syncCustomerAreaOptions(current);
+  }
+
+  function syncCustomerAreaOptions(prefill) {
+    const current = prefill || {
+      area: ui.customerArea ? ui.customerArea.value : "",
+      areaCode: ui.customerAreaCode ? ui.customerAreaCode.value : ""
+    };
+    const selectedRep = ui.customerRep ? ui.customerRep.value : "";
+    const selectedSector = ui.customerSector ? ui.customerSector.value : "";
+    const rows = state.customers.filter(
+      (entry) => (!selectedRep || entry.rep === selectedRep) && (!selectedSector || entry.sector === selectedSector)
+    );
+    const sectorMeta = rows.find((entry) => entry.sector_code);
+    if (ui.customerSectorCode) {
+      ui.customerSectorCode.value = sectorMeta ? sectorMeta.sector_code || "" : "";
+    }
+
+    const areas = unique(rows.map((entry) => entry.area).filter(Boolean)).map((area) => {
+      const match = rows.find((entry) => entry.area === area && entry.area_code);
+      return { value: area, label: area, code: match ? match.area_code : "" };
+    });
+    fillNativeSelect(ui.customerArea, areas, current.area, "اختر المنطقة");
+    syncCustomerAreaCode(current.areaCode);
+  }
+
+  function syncCustomerAreaCode(fallbackCode) {
+    const selectedRep = ui.customerRep ? ui.customerRep.value : "";
+    const selectedSector = ui.customerSector ? ui.customerSector.value : "";
+    const selectedArea = ui.customerArea ? ui.customerArea.value : "";
+    const row = state.customers.find(
+      (entry) =>
+        (!selectedRep || entry.rep === selectedRep) &&
+        (!selectedSector || entry.sector === selectedSector) &&
+        (!selectedArea || entry.area === selectedArea) &&
+        entry.area_code
+    );
+    if (ui.customerAreaCode) {
+      ui.customerAreaCode.value = row ? row.area_code || "" : String(fallbackCode || "");
+    }
+  }
+
   function scopedCustomers(customers, filters) {
     const byRep = customers.filter((entry) => !filters.rep || entry.rep === filters.rep);
     const byCategory = byRep.filter((entry) => !filters.category || entry.category === filters.category);
@@ -1112,6 +1287,7 @@
             customer,
             item: Object.assign({}, item, { unit: ui.orderUnit.value }),
             color: ui.orderColor.value.trim(),
+            notes: ui.orderNotes.value.trim(),
             qty,
             sizeS: sizes.sizeS,
             sizeM: sizes.sizeM,
@@ -1126,11 +1302,12 @@
       });
       state.orderDraft.id = result.orderId;
       state.orderDraft.code = result.orderCode;
+      state.orderDraft.status = result.orderStatus || state.orderDraft.status || "draft";
+      state.orderDraft.notes = ui.orderNotes.value.trim();
       state.orderDraft.lines = result.lines || [];
       state.lastCompletedOrder = null;
       renderOrderLines();
-      ui.orderItem.value = "";
-      resetOrderVariantInputs();
+      ui.orderQty.value = "1";
       notify("Line added.", "success");
     } catch (error) {
       notify(error.message || "Could not add line.", "error");
@@ -1150,9 +1327,7 @@
 
     const status = state.lastCompletedOrder
       ? state.lastCompletedOrder.status
-      : state.orderDraft.id
-        ? "draft"
-        : "";
+      : state.orderDraft.status || (state.orderDraft.id ? "draft" : "");
     ui.orderStatusBadge.textContent = status ? statusLabel(status) : "Ready";
     ui.orderStatusBadge.className = status ? statusClass(status) : "pill pill-draft";
 
@@ -1217,12 +1392,14 @@
         method: "POST",
         body: {
           orderId: state.orderDraft.id,
-          orderCode: state.orderDraft.code
+          orderCode: state.orderDraft.code,
+          notes: ui.orderNotes.value.trim()
         }
       });
       state.lastCompletedOrder = result.order || { order_code: state.orderDraft.code, status: "confirmed" };
-      state.orderDraft = { id: "", code: "", lines: [] };
+      state.orderDraft = { id: "", code: "", lines: [], status: "", notes: "" };
       state.locations.order = emptyLocation();
+      ui.orderNotes.value = "";
       await Promise.all([loadHomeSummary(), state.ordersUnlocked ? onLoadOrdersSilently() : Promise.resolve()]);
       renderHomeSummary();
       renderOrderLines();
@@ -1247,12 +1424,14 @@
         method: "POST",
         body: {
           orderId: state.orderDraft.id,
-          orderCode: state.orderDraft.code
+          orderCode: state.orderDraft.code,
+          notes: ui.orderNotes.value.trim()
         }
       });
       state.lastCompletedOrder = result.order || { order_code: state.orderDraft.code, status: "cancelled" };
-      state.orderDraft = { id: "", code: "", lines: [] };
+      state.orderDraft = { id: "", code: "", lines: [], status: "", notes: "" };
       state.locations.order = emptyLocation();
+      ui.orderNotes.value = "";
       await Promise.all([loadHomeSummary(), state.ordersUnlocked ? onLoadOrdersSilently() : Promise.resolve()]);
       renderHomeSummary();
       renderOrderLines();
@@ -1345,10 +1524,14 @@
     });
   }
 
-  function renderOrdersTable() {
-    const filtered = state.ordersRepFilter
+  function filteredOrdersList() {
+    return state.ordersRepFilter
       ? state.ordersList.filter((order) => (order.rep || "") === state.ordersRepFilter)
-      : state.ordersList;
+      : state.ordersList.slice();
+  }
+
+  function renderOrdersTable() {
+    const filtered = filteredOrdersList();
 
     ui.ordersListCaption.textContent = state.ordersRepFilter
       ? `عرض طلبيات المندوب: ${state.ordersRepFilter}`
@@ -1378,6 +1561,30 @@
         showOrderDetails(button.dataset.code);
       });
     });
+    if (isAdminUser()) {
+      Array.from(ui.ordersTable.querySelectorAll("tr")).forEach((row, index) => {
+        const order = filtered[index];
+        const actionCell = row.lastElementChild;
+        if (!order || !actionCell || actionCell.querySelector(".order-edit")) {
+          return;
+        }
+        actionCell.insertAdjacentHTML(
+          "beforeend",
+          ` <button class="btn btn-soft order-edit" data-code="${escapeHtml(order.order_code || "")}" type="button">Edit</button>
+            <button class="btn btn-soft order-delete" data-code="${escapeHtml(order.order_code || "")}" type="button">Delete</button>`
+        );
+      });
+      Array.from(document.querySelectorAll(".order-edit")).forEach((button) => {
+        button.addEventListener("click", function () {
+          loadOrderForEditing(button.dataset.code);
+        });
+      });
+      Array.from(document.querySelectorAll(".order-delete")).forEach((button) => {
+        button.addEventListener("click", function () {
+          deleteOrder(button.dataset.code);
+        });
+      });
+    }
   }
 
   async function showOrderDetails(orderCode) {
@@ -1390,6 +1597,84 @@
     }
   }
 
+  async function loadOrderForEditing(orderCode) {
+    try {
+      const result = await apiRequest("/api/orders/" + encodeURIComponent(orderCode), {}, { "x-screen-token": state.ordersScreenToken });
+      const order = result.order || {};
+      state.orderDraft = {
+        id: order.id || "",
+        code: order.order_code || "",
+        lines: result.lines || [],
+        status: order.status || "",
+        notes: order.notes || ""
+      };
+      state.orderFilters.rep = order.rep || "";
+      state.orderFilters.category = order.category || "";
+      state.orderFilters.sector = order.sector || "";
+      state.orderFilters.area = order.area || "";
+      state.orderFilters.customerCode = order.customer_code || "";
+      state.locations.order = {
+        lat: order.lat || "",
+        lng: order.lng || "",
+        arabicAddress: order.arabic_address || "",
+        mapUrl: order.map_url || ""
+      };
+      ui.orderNotes.value = order.notes || "";
+      state.lastCompletedOrder = null;
+      renderAllFilterGroups();
+      renderOrderLines();
+      renderLocationSummary("order");
+      setPage("orders-entry");
+      notify("Order loaded for editing.", "success");
+    } catch (error) {
+      notify(error.message || "Could not open order for editing.", "error");
+    }
+  }
+
+  async function deleteOrder(orderCode) {
+    try {
+      await apiRequest("/api/orders/" + encodeURIComponent(orderCode), { method: "DELETE" }, { "x-screen-token": state.ordersScreenToken });
+      if (state.orderDraft.code === orderCode) {
+        state.orderDraft = { id: "", code: "", lines: [], status: "", notes: "" };
+        state.locations.order = emptyLocation();
+        ui.orderNotes.value = "";
+        renderOrderLines();
+        renderLocationSummary("order");
+      }
+      await onLoadOrdersSilently();
+      notify("Order deleted.", "success");
+    } catch (error) {
+      notify(error.message || "Could not delete order.", "error");
+    }
+  }
+
+  function exportOrdersExcel() {
+    const rows = filteredOrdersList();
+    if (!rows.length) {
+      notify("No orders to export.", "error");
+      return;
+    }
+    if (!window.XLSX) {
+      notify("Excel export library is not loaded.", "error");
+      return;
+    }
+    const exportRows = rows.map((order) => ({
+      order_code: order.order_code || "",
+      customer_code: order.customer_code || "",
+      customer_name: order.customer_name || "",
+      rep: order.rep || "",
+      status: statusLabel(order.status),
+      created_at: order.created_at ? new Date(order.created_at).toLocaleString("en-CA") : "",
+      notes: order.notes || "",
+      address: order.arabic_address || order.address || ""
+    }));
+    const worksheet = window.XLSX.utils.json_to_sheet(exportRows);
+    const workbook = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    window.XLSX.writeFile(workbook, `orders-${stamp}.xlsx`);
+  }
+
   function renderOrderDetailsDialog(order, lines) {
     const totalQty = lines.reduce((sum, line) => sum + Number(line.qty || 0), 0);
     const createdAt = order.created_at || "";
@@ -1399,7 +1684,10 @@
       <section class="order-sheet">
         <header class="order-sheet-header">
           <h2>&#1578;&#1601;&#1575;&#1589;&#1610;&#1604; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577;: ${escapeHtml(order.order_code || "")}</h2>
-          <button class="btn btn-soft order-sheet-back" type="button">&#1575;&#1604;&#1593;&#1608;&#1583;&#1577;</button>
+          <div class="actions-row compact-actions">
+            <button class="btn btn-soft order-sheet-print" type="button">&#1591;&#1576;&#1575;&#1593;&#1577;</button>
+            <button class="btn btn-soft order-sheet-back" type="button">&#1575;&#1604;&#1593;&#1608;&#1583;&#1577;</button>
+          </div>
         </header>
 
         <div class="order-sheet-separator"></div>
@@ -1425,6 +1713,7 @@
 
           <div class="order-sheet-address">
             <p><strong>&#1575;&#1604;&#1593;&#1606;&#1608;&#1575;&#1606;:</strong> ${escapeHtml(order.arabic_address || order.address || "No address")}</p>
+            <p><strong>&#1605;&#1604;&#1575;&#1581;&#1592;&#1575;&#1578;:</strong> ${escapeHtml(order.notes || "--")}</p>
             <div class="order-sheet-map-row">
               <p><strong>&#1575;&#1604;&#1605;&#1608;&#1602;&#1593;:</strong> ${
                 mapUrl
@@ -1491,9 +1780,36 @@
     `;
 
     const backButton = ui.orderDetailsContent.querySelector(".order-sheet-back");
+    const printButton = ui.orderDetailsContent.querySelector(".order-sheet-print");
     if (backButton) {
       backButton.addEventListener("click", function () {
         ui.detailsDialog.close();
+      });
+    }
+    if (printButton) {
+      printButton.addEventListener("click", function () {
+        const printWindow = window.open("", "_blank");
+        if (!printWindow) {
+          notify("Allow popups to print the order.", "error");
+          return;
+        }
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>${escapeHtml(order.order_code || "order")}</title>
+              <style>
+                body { font-family: Arial, sans-serif; direction: rtl; padding: 24px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+                th, td { border: 1px solid #d7dbe4; padding: 8px; text-align: right; }
+                .order-sheet-back, .order-sheet-print { display: none; }
+              </style>
+            </head>
+            <body>${ui.orderDetailsContent.innerHTML}</body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
       });
     }
   }
@@ -1563,18 +1879,20 @@
     ui.customerCode.value = customer.code || "";
     ui.customerCode.disabled = true;
     ui.customerName.value = customer.name || "";
-    ui.customerRep.value = customer.rep || "";
-    ui.customerRepCode.value = customer.rep_code || "";
+    renderCustomerEditorOptions({
+      rep: customer.rep || "",
+      repCode: customer.rep_code || "",
+      sector: customer.sector || "",
+      sectorCode: customer.sector_code || "",
+      area: customer.area || "",
+      areaCode: customer.area_code || ""
+    });
     ui.customerCategory.value = customer.category || "";
     ui.customerCategory1.value = customer.category1 || "";
     ui.customerCategory2.value = customer.category2 || "";
     ui.customerCategory3.value = customer.category3 || "";
     ui.customerCategory4.value = customer.category4 || "";
     ui.customerCategory5.value = customer.category5 || "";
-    ui.customerSector.value = customer.sector || "";
-    ui.customerSectorCode.value = customer.sector_code || "";
-    ui.customerArea.value = customer.area || "";
-    ui.customerAreaCode.value = customer.area_code || "";
     ui.customerAddress.value = customer.address || "";
     ui.customerPhone.value = customer.phone || "";
     ui.customerMobile.value = customer.mobile || "";
@@ -1619,6 +1937,7 @@
     ui.customerForm.reset();
     ui.customerFormTitle.textContent = "عميل جديد";
     ui.customerCode.disabled = false;
+    renderCustomerEditorOptions({ rep: "", repCode: "", sector: "", sectorCode: "", area: "", areaCode: "" });
     ui.customerActive.value = "true";
     ui.customerSubmit.textContent = "حفظ العميل";
   }
@@ -1691,6 +2010,66 @@
       .join("\n");
   }
 
+  function syncHiddenVariantsField() {
+    if (ui.itemVariants) {
+      ui.itemVariants.value = formatVariantsForTextarea(state.itemVariantRows);
+    }
+  }
+
+  function renderItemVariantRows() {
+    if (!ui.itemVariantsTable) {
+      return;
+    }
+    if (!state.itemVariantRows.length) {
+      ui.itemVariantsTable.innerHTML = '<tr><td colspan="5" class="empty-state">No variants yet</td></tr>';
+      syncHiddenVariantsField();
+      return;
+    }
+
+    const currentCode = ui.itemCode ? ui.itemCode.value.trim() : "";
+    ui.itemVariantsTable.innerHTML = state.itemVariantRows
+      .map(
+        (variant, index) => `
+          <tr>
+            <td>${escapeHtml(currentCode || "--")}</td>
+            <td>${escapeHtml(variant.color || "--")}</td>
+            <td>${escapeHtml(variant.size || "--")}</td>
+            <td>${escapeHtml(variant.unit || "--")}</td>
+            <td><button class="btn btn-soft item-variant-delete" data-index="${escapeHtml(String(index))}" type="button">Delete</button></td>
+          </tr>
+        `
+      )
+      .join("");
+
+    Array.from(document.querySelectorAll(".item-variant-delete")).forEach((button) => {
+      button.addEventListener("click", function () {
+        const index = Number(button.dataset.index);
+        state.itemVariantRows = state.itemVariantRows.filter((_, rowIndex) => rowIndex !== index);
+        renderItemVariantRows();
+      });
+    });
+    syncHiddenVariantsField();
+  }
+
+  function onAddItemVariant() {
+    const candidate = normalizeVariant({
+      color: ui.itemVariantColor.value.trim(),
+      size: ui.itemVariantSize.value.trim(),
+      unit: (ui.itemVariantUnit.value || ui.itemUnit.value || "").trim()
+    });
+
+    if (!candidate.color && !candidate.size && !candidate.unit) {
+      notify("Enter color, size, or unit first.", "error");
+      return;
+    }
+
+    state.itemVariantRows = state.itemVariantRows.concat(candidate);
+    renderItemVariantRows();
+    ui.itemVariantColor.value = "";
+    ui.itemVariantSize.value = "";
+    ui.itemVariantUnit.value = ui.itemUnit.value.trim();
+  }
+
   function parseVariantsTextarea(text, fallbackUnit) {
     return String(text || "")
       .split(/\r?\n/)
@@ -1707,35 +2086,50 @@
       .filter((variant) => variant.color || variant.size || variant.unit);
   }
 
-  function renderItemVariantsSummary(variants, unit) {
-    if (!Array.isArray(variants) || !variants.length) {
-      return escapeHtml(unit || "--");
-    }
-    const preview = variants
-      .slice(0, 3)
-      .map((variant) => {
-        const pieces = [variant.color, variant.size, variant.unit].filter(Boolean);
-        return escapeHtml(pieces.join(" / ") || "--");
-      })
-      .join("<br />");
-    return variants.length > 3 ? preview + "<br />..." : preview;
+  function flattenItemsForTable() {
+    return state.items.flatMap((item) => {
+      const variants = Array.isArray(item.variants) && item.variants.length ? item.variants : [{ color: "", size: "", unit: item.unit || "" }];
+      return variants.map((variant) => ({
+        code: item.code || "",
+        name: item.name || "",
+        model: item.model || "",
+        color: variant.color || "",
+        size: variant.size || "",
+        unit: variant.unit || item.unit || "",
+        price: item.price || 0,
+        is_active: item.is_active !== false
+      }));
+    });
   }
 
   function renderItemsTable() {
+    const itemsTableHead = ui.itemsTable && ui.itemsTable.closest("table")
+      ? ui.itemsTable.closest("table").querySelector("thead tr")
+      : null;
+    if (itemsTableHead) {
+      itemsTableHead.innerHTML = `
+        <th>Code</th>
+        <th>Product</th>
+        <th>Model</th>
+        <th>Color</th>
+        <th>Size</th>
+        <th>Unit</th>
+        <th>Price</th>
+        <th>Status</th>
+        <th>Actions</th>
+      `;
+    }
     const pageSize = 10;
     const needle = state.itemSearch.toLowerCase();
-    const filteredRows = state.items.filter((row) => {
+    const filteredRows = flattenItemsForTable().filter((row) => {
       if (!needle) return true;
-      const variantText = Array.isArray(row.variants)
-        ? row.variants.map((variant) => [variant.color, variant.size, variant.unit].filter(Boolean).join(" ")).join(" ")
-        : "";
-      return [row.code, row.name, row.model, row.unit, variantText].some((value) =>
+      return [row.code, row.name, row.model, row.color, row.size, row.unit].some((value) =>
         String(value || "").toLowerCase().includes(needle)
       );
     });
 
     if (!filteredRows.length) {
-      ui.itemsTable.innerHTML = '<tr><td colspan="8" class="empty-state">No results</td></tr>';
+      ui.itemsTable.innerHTML = '<tr><td colspan="9" class="empty-state">No results</td></tr>';
       renderTablePager(ui.itemsPager, 1, 1, () => {});
       return;
     }
@@ -1752,8 +2146,9 @@
             <td>${escapeHtml(row.code || "")}</td>
             <td>${escapeHtml(row.name || "")}</td>
             <td>${escapeHtml(row.model || "--")}</td>
+            <td>${escapeHtml(row.color || "--")}</td>
+            <td>${escapeHtml(row.size || "--")}</td>
             <td>${escapeHtml(row.unit || "--")}</td>
-            <td>${renderItemVariantsSummary(row.variants, row.unit)}</td>
             <td>${escapeHtml(formatCurrency(row.price || 0))}</td>
             <td><span class="${row.is_active === false ? "pill pill-cancelled" : "pill pill-confirmed"}">${escapeHtml(
               row.is_active === false ? "Inactive" : "Active"
@@ -1789,7 +2184,9 @@
     ui.itemUnit.value = item.unit || "";
     ui.itemPrice.value = item.price || 0;
     ui.itemDescription.value = item.description || "";
-    ui.itemVariants.value = formatVariantsForTextarea(item.variants);
+    state.itemVariantRows = Array.isArray(item.variants) ? item.variants.map(normalizeVariant) : [];
+    renderItemVariantRows();
+    ui.itemVariantUnit.value = item.unit || "";
     ui.itemActive.value = item.is_active === false ? "false" : "true";
     ui.itemSubmit.textContent = "Save Changes";
     setPage("items");
@@ -1800,7 +2197,8 @@
     ui.itemForm.reset();
     ui.itemFormTitle.textContent = "New Product";
     ui.itemCode.disabled = false;
-    ui.itemVariants.value = "";
+    state.itemVariantRows = [];
+    renderItemVariantRows();
     ui.itemActive.value = "true";
     ui.itemSubmit.textContent = "Save Product";
   }
@@ -1814,7 +2212,7 @@
       unit: ui.itemUnit.value.trim(),
       description: ui.itemDescription.value.trim(),
       price: Number(ui.itemPrice.value || 0),
-      variants: parseVariantsTextarea(ui.itemVariants.value, ui.itemUnit.value.trim()),
+      variants: state.itemVariantRows.slice(),
       isActive: ui.itemActive.value === "true"
     };
 

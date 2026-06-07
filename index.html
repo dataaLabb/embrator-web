@@ -371,10 +371,14 @@
 
                   <label class="field">
                     <span>&#1575;&#1604;&#1603;&#1605;&#1610;&#1577;</span>
-                    <input id="order-qty" type="number" min="0" step="0.01" value="1" />
+                    <input id="order-qty" type="number" min="1" step="1" value="1" />
                   </label>
                 </div>
                 <button id="add-order-line" class="btn btn-primary" type="button">&#1573;&#1590;&#1575;&#1601;&#1577; &#1575;&#1604;&#1576;&#1606;&#1583;</button>
+                <label class="field field-span">
+                  <span>&#1605;&#1604;&#1575;&#1581;&#1592;&#1575;&#1578; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577;</span>
+                  <textarea id="order-notes" rows="4"></textarea>
+                </label>
               </div>
             </div>
 
@@ -447,6 +451,10 @@
                 <div class="field field-button">
                   <span>&nbsp;</span>
                   <button id="load-orders" class="btn btn-primary" type="button">تحميل الطلبيات</button>
+                </div>
+                <div class="field field-button">
+                  <span>&nbsp;</span>
+                  <button id="export-orders" class="btn btn-soft" type="button">تصدير Excel</button>
                 </div>
               </div>
 
@@ -544,11 +552,11 @@
                   </label>
                   <label class="field">
                     <span>المندوب</span>
-                    <input id="customer-rep" type="text" />
+                    <select id="customer-rep"></select>
                   </label>
                   <label class="field">
                     <span>كود المندوب</span>
-                    <input id="customer-rep-code" type="text" />
+                    <input id="customer-rep-code" type="text" readonly />
                   </label>
                   <label class="field">
                     <span>التصنيف</span>
@@ -576,19 +584,19 @@
                   </label>
                   <label class="field">
                     <span>القطاع</span>
-                    <input id="customer-sector" type="text" />
+                    <select id="customer-sector"></select>
                   </label>
                   <label class="field">
                     <span>كود القطاع</span>
-                    <input id="customer-sector-code" type="text" />
+                    <input id="customer-sector-code" type="text" readonly />
                   </label>
                   <label class="field">
                     <span>المنطقة</span>
-                    <input id="customer-area" type="text" />
+                    <select id="customer-area"></select>
                   </label>
                   <label class="field">
                     <span>كود المنطقة</span>
-                    <input id="customer-area-code" type="text" />
+                    <input id="customer-area-code" type="text" readonly />
                   </label>
                   <label class="field">
                     <span>العنوان</span>

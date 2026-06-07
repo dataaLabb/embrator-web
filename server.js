@@ -242,6 +242,10 @@ async function getOrderLines(orderId) {
   );
 }
 
+function isAdminRequest(req) {
+  return String(req.user?.email || "").toLowerCase() === "admin@embrator.com";
+}
+
 const PRODUCTION_SHEET_ID = process.env.PRODUCTION_SHEET_ID || "1T4aYUQn6MRme1LfKe6ryd4YbJMaEN6VNobnwjM9yEZo";
 const PRODUCTION_SHEETS = [
   { key: "all", title: "الكل", gid: null },
@@ -456,8 +460,7 @@ app.post("/api/auth/login", rateLimit(10, 15 * 60_000), async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ message: "البريد الإلكتروني وكلمة المرور مطلوبان." });
     }
-    await client.query("begin");
-    const rows = await client.query(
+    const rows = await query(
       `select id, email, full_name
        from app_users
        where email = $1
@@ -508,8 +511,7 @@ app.post("/api/users", authRequired, adminRequired, async (req, res) => {
       return res.status(400).json({ message: "ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙŠØ¬Ø¨ Ø£Ù† ØªÙƒÙˆÙ† 4 Ø£Ø­Ø±Ù Ø£Ùˆ Ø£ÙƒØ«Ø±." });
     }
 
-    await client.query("begin");
-    const rows = await client.query(
+    const rows = await query(
       `insert into app_users (email, full_name, password_hash, is_active)
        values ($1, $2, crypt($3, gen_salt('bf')), $4)
        returning id, email, full_name, is_active, created_at`,
@@ -557,7 +559,7 @@ app.put("/api/users/:id", authRequired, adminRequired, async (req, res) => {
       return res.status(400).json({ message: "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ø­Ø§Ù„ÙŠ." });
     }
 
-    const rows = await client.query(
+    const rows = await query(
       `update app_users
        set email = $2,
            full_name = $3,
@@ -637,7 +639,7 @@ app.post("/api/customers", authRequired, async (req, res) => {
   try {
     const p = req.body || {};
     if (!p.code || !p.name) return res.status(400).json({ message: "كود العميل والاسم مطلوبان." });
-    const rows = await client.query(
+    const rows = await query(
       `insert into customers (
          code, name, rep, category, sector, area, address, phone, email, is_active,
          branch_code, category1, category2, category3, category4, category5,
@@ -933,6 +935,8 @@ app.post("/api/orders/line", authRequired, async (req, res) => {
     const customer = p.customer || {};
     const item = p.item || {};
     const color = String(p.color || "").trim();
+    const notes = String(p.notes || "").trim();
+    const isAdmin = isAdminRequest(req);
     const sizeS = Number(p.sizeS || 0);
     const sizeM = Number(p.sizeM || 0);
     const sizeL = Number(p.sizeL || 0);
@@ -961,38 +965,37 @@ app.post("/api/orders/line", authRequired, async (req, res) => {
 
     if (orderRows.rows.length) {
       const existing = orderRows.rows[0];
-      if (String(existing.created_by) !== String(req.user.userId)) {
+      if (!isAdmin && String(existing.created_by) !== String(req.user.userId)) {
         await client.query("rollback");
         return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
       }
-      if (existing.status !== "draft") {
+      if (!isAdmin && existing.status !== "draft") {
         await client.query("rollback");
         return res.status(400).json({ message: "لا يمكن تعديل طلبية مؤكدة أو ملغية." });
       }
       orderId = existing.id;
       orderCode = existing.order_code;
-      if (p.lat || p.lng || p.arabicAddress || p.mapUrl) {
-        await client.query(
-          `update orders
-           set lat = coalesce($2, lat),
-               lng = coalesce($3, lng),
-               arabic_address = case when $4 <> '' then $4 else arabic_address end,
-               map_url = case when $5 <> '' then $5 else map_url end
-           where id = $1`,
-          [orderId, p.lat||null, p.lng||null, p.arabicAddress||"", p.mapUrl||""]
-        );
-      }
+      await client.query(
+        `update orders
+         set lat = coalesce($2, lat),
+             lng = coalesce($3, lng),
+             arabic_address = case when $4 <> '' then $4 else arabic_address end,
+             map_url = case when $5 <> '' then $5 else map_url end,
+             notes = case when $6 <> '' then $6 else notes end
+         where id = $1`,
+        [orderId, p.lat||null, p.lng||null, p.arabicAddress||"", p.mapUrl||"", notes]
+      );
     } else {
       const created = await client.query(
         `insert into orders
-           (order_code,customer_code,customer_name,rep,category,sector,area,address,arabic_address,lat,lng,map_url,status,created_by)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'draft',$13)
+           (order_code,customer_code,customer_name,rep,category,sector,area,address,arabic_address,lat,lng,map_url,notes,status,created_by)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'draft',$14)
          returning id, order_code`,
         [
           orderCode, customer.code, customer.name, customer.rep||"",
           customer.category||"", customer.sector||"", customer.area||"",
           customer.address||"", p.arabicAddress||"",
-          p.lat||null, p.lng||null, p.mapUrl||"", req.user.userId
+          p.lat||null, p.lng||null, p.mapUrl||"", notes, req.user.userId
         ]
       );
       orderId = created.rows[0].id;
@@ -1001,9 +1004,19 @@ app.post("/api/orders/line", authRequired, async (req, res) => {
 
     const existingLine = await client.query(
       `select id from order_lines
-       where order_id = $1 and item_code = $2 and coalesce(color,'') = $3
+       where order_id = $1
+         and item_code = $2
+         and coalesce(color,'') = $3
+         and coalesce(unit,'') = $4
+         and coalesce(size_s,0) = $5
+         and coalesce(size_m,0) = $6
+         and coalesce(size_l,0) = $7
+         and coalesce(size_xl,0) = $8
+         and coalesce(size_2xl,0) = $9
+         and coalesce(size_3xl,0) = $10
+         and coalesce(size_4xl,0) = $11
        limit 1`,
-      [orderId, item.code, color]
+      [orderId, item.code, color, item.unit || "", sizeS, sizeM, sizeL, sizeXl, size2xl, size3xl, size4xl]
     );
 
     if (existingLine.rows.length) {
@@ -1032,7 +1045,7 @@ app.post("/api/orders/line", authRequired, async (req, res) => {
     await client.query("commit");
     const lines = await getOrderLines(orderId);
     clearAnalyticsCache();
-    res.json({ orderId, orderCode, lines });
+    res.json({ orderId, orderCode, orderStatus: orderRows.rows[0] ? orderRows.rows[0].status : "draft", notes, lines });
   } catch (error) {
     await client.query("rollback");
     serverError(res, error);
@@ -1051,10 +1064,10 @@ app.delete("/api/orders/line/:lineId", authRequired, async (req, res) => {
       [req.params.lineId]
     );
     if (!lineCheck.length) return res.status(404).json({ message: "البند غير موجود." });
-    if (String(lineCheck[0].created_by) !== String(req.user.userId)) {
+    if (!isAdminRequest(req) && String(lineCheck[0].created_by) !== String(req.user.userId)) {
       return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
     }
-    if (lineCheck[0].status !== "draft") {
+    if (!isAdminRequest(req) && lineCheck[0].status !== "draft") {
       return res.status(400).json({ message: "لا يمكن تعديل طلبية مؤكدة أو ملغية." });
     }
     const lineRows = await query(
@@ -1083,16 +1096,20 @@ app.post("/api/orders/confirm", authRequired, async (req, res) => {
       [orderId, orderCode]
     );
     if (!check.length) return res.status(404).json({ message: "الطلبية غير موجودة." });
-    if (String(check[0].created_by) !== String(req.user.userId)) {
+    if (!isAdminRequest(req) && String(check[0].created_by) !== String(req.user.userId)) {
       return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
     }
-    if (check[0].status !== "draft") {
+    if (!isAdminRequest(req) && check[0].status !== "draft") {
       return res.status(400).json({ message: "الطلبية ليست في حالة مسودة." });
     }
     const rows = await query(
-      `update orders set status='confirmed', confirmed_at=now()
-       where id=$1 returning id, order_code, status, confirmed_at`,
-      [check[0].id]
+      `update orders
+       set status='confirmed',
+           confirmed_at=now(),
+           notes = case when $2 <> '' then $2 else notes end
+       where id=$1
+       returning id, order_code, status, confirmed_at, notes`,
+      [check[0].id, String(req.body.notes || "").trim()]
     );
     clearAnalyticsCache();
     clearAnalyticsCache();
@@ -1115,13 +1132,16 @@ app.post("/api/orders/location", authRequired, async (req, res) => {
       [orderId, orderCode]
     );
     if (!check.length) return res.status(404).json({ message: "الطلبية غير موجودة." });
-    if (String(check[0].created_by) !== String(req.user.userId)) {
+    if (!isAdminRequest(req) && String(check[0].created_by) !== String(req.user.userId)) {
       return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
     }
     const rows = await query(
-      `update orders set lat=$2, lng=$3, arabic_address=$4, map_url=$5
-       where id=$1 returning id, order_code, lat, lng, arabic_address, map_url`,
-      [check[0].id, req.body.lat||null, req.body.lng||null, req.body.arabicAddress||"", req.body.mapUrl||""]
+      `update orders
+       set lat=$2, lng=$3, arabic_address=$4, map_url=$5,
+           notes = case when $6 <> '' then $6 else notes end
+       where id=$1
+       returning id, order_code, lat, lng, arabic_address, map_url, notes`,
+      [check[0].id, req.body.lat||null, req.body.lng||null, req.body.arabicAddress||"", req.body.mapUrl||"", String(req.body.notes || "").trim()]
     );
     clearAnalyticsCache();
     res.json({ success: true, order: rows[0] });
@@ -1143,16 +1163,20 @@ app.post("/api/orders/cancel", authRequired, async (req, res) => {
       [orderId, orderCode]
     );
     if (!check.length) return res.status(404).json({ message: "الطلبية غير موجودة." });
-    if (String(check[0].created_by) !== String(req.user.userId)) {
+    if (!isAdminRequest(req) && String(check[0].created_by) !== String(req.user.userId)) {
       return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
     }
-    if (check[0].status !== "draft") {
+    if (!isAdminRequest(req) && check[0].status !== "draft") {
       return res.status(400).json({ message: "الطلبية ليست في حالة مسودة." });
     }
     const rows = await query(
-      `update orders set status='cancelled', cancelled_at=now()
-       where id=$1 returning id, order_code, status, cancelled_at`,
-      [check[0].id]
+      `update orders
+       set status='cancelled',
+           cancelled_at=now(),
+           notes = case when $2 <> '' then $2 else notes end
+       where id=$1
+       returning id, order_code, status, cancelled_at, notes`,
+      [check[0].id, String(req.body.notes || "").trim()]
     );
     res.json({ success: true, order: rows[0] || null });
   } catch (error) {
@@ -1161,6 +1185,20 @@ app.post("/api/orders/cancel", authRequired, async (req, res) => {
 });
 
 // orders browser — requires screen token
+app.delete("/api/orders/:orderCode", authRequired, ordersScreenRequired, adminRequired, async (req, res) => {
+  try {
+    const rows = await query(
+      `delete from orders where order_code = $1 returning id, order_code`,
+      [req.params.orderCode]
+    );
+    if (!rows.length) return res.status(404).json({ message: "Ø§Ù„Ø·Ù„Ø¨ÙŠØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©." });
+    clearAnalyticsCache();
+    res.json({ success: true, order: rows[0] });
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
 app.get("/api/orders", authRequired, ordersScreenRequired, async (req, res) => {
   try {
     const values = [];
@@ -1171,7 +1209,7 @@ app.get("/api/orders", authRequired, ordersScreenRequired, async (req, res) => {
     const clause = where.length ? "where " + where.join(" and ") : "";
     const [orders, summaryByRep] = await Promise.all([
       query(
-        `select id, order_code, customer_name, rep, status, address, arabic_address, lat, lng, map_url, created_at
+        `select id, order_code, customer_code, customer_name, rep, status, address, arabic_address, lat, lng, map_url, notes, created_at
          from orders ${clause} order by created_at desc`,
         values
       ),
@@ -1675,6 +1713,7 @@ async function ensureSchema() {
       address text not null default '', arabic_address text not null default '',
       lat double precision, lng double precision,
       map_url text not null default '',
+      notes text not null default '',
       status text not null default 'draft' check (status in ('draft','confirmed','cancelled')),
       created_by uuid references app_users(id),
       created_at timestamptz not null default now(),
@@ -1735,6 +1774,7 @@ async function ensureSchema() {
     alter table orders add column if not exists lat double precision;
     alter table orders add column if not exists lng double precision;
     alter table orders add column if not exists map_url text not null default '';
+    alter table orders add column if not exists notes text not null default '';
     alter table order_lines add column if not exists color text not null default '';
     alter table order_lines add column if not exists size_s numeric(14,2) not null default 0;
     alter table order_lines add column if not exists size_m numeric(14,2) not null default 0;
