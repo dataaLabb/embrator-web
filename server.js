@@ -180,7 +180,7 @@ async function query(sql, params) {
   return result.rows;
 }
 
-const ANALYTICS_CACHE_TTL_MS = 45 * 1000;
+const ANALYTICS_CACHE_TTL_MS = 2 * 60 * 1000;
 const analyticsCache = new Map();
 
 function stableCacheString(value) {
@@ -205,11 +205,21 @@ async function withAnalyticsCache(scope, payload, compute) {
   const now = Date.now();
   const cached = analyticsCache.get(key);
   if (cached && now - cached.time < ANALYTICS_CACHE_TTL_MS) {
-    return cached.value;
+    if (cached.value !== undefined) return cached.value;
+    if (cached.promise) return cached.promise;
   }
-  const value = await compute();
-  analyticsCache.set(key, { time: now, value });
-  return value;
+  const pending = Promise.resolve()
+    .then(compute)
+    .then((value) => {
+      analyticsCache.set(key, { time: Date.now(), value });
+      return value;
+    })
+    .catch((error) => {
+      analyticsCache.delete(key);
+      throw error;
+    });
+  analyticsCache.set(key, { time: now, promise: pending });
+  return pending;
 }
 
 function clearAnalyticsCache() {
@@ -253,8 +263,9 @@ const PRODUCTION_SHEETS = [
   { key: "internal", title: "داخلي", gid: "1577931770" },
   { key: "wings", title: "وينكز", gid: "221278991" }
 ];
-const PRODUCTION_CACHE_TTL_MS = 2 * 60 * 1000;
+const PRODUCTION_CACHE_TTL_MS = 10 * 60 * 1000;
 let productionRowsCache = { time: 0, rows: [] };
+let productionRowsPromise = null;
 
 function parseCsvRows(text) {
   const rows = [];
@@ -308,6 +319,74 @@ function normalizeArabicToken(value) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+function compactArabicToken(value) {
+  return normalizeArabicToken(value).replace(/\s+/g, "");
+}
+
+function softArabicToken(value) {
+  return compactArabicToken(value)
+    .replace(/[ايوهة]/g, "")
+    .replace(/(.)\1+/g, "$1");
+}
+
+function levenshteinDistance(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const matrix = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i += 1) matrix[i][0] = i;
+  for (let j = 0; j <= b.length; j += 1) matrix[0][j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return matrix[a.length][b.length];
+}
+
+function productionTokenMatches(value, target) {
+  const exactValue = compactArabicToken(value);
+  const exactTarget = compactArabicToken(target);
+  if (!exactValue || !exactTarget) return false;
+  if (exactValue === exactTarget || exactValue.includes(exactTarget) || exactTarget.includes(exactValue)) {
+    return true;
+  }
+  const softValue = softArabicToken(value);
+  const softTarget = softArabicToken(target);
+  if (!softValue || !softTarget) return false;
+  if (softValue === softTarget || softValue.includes(softTarget) || softTarget.includes(softValue)) {
+    return true;
+  }
+  const maxDistance = Math.max(1, Math.min(2, Math.floor(Math.max(softValue.length, softTarget.length) / 4)));
+  return levenshteinDistance(softValue, softTarget) <= maxDistance;
+}
+
+function rowMatchesProductionAliases(row, aliases) {
+  const values = [row.lineName, row.destination, row.itemName].filter(Boolean);
+  return values.some((value) => aliases.some((alias) => productionTokenMatches(value, alias)));
+}
+
+function sumProductionRowsByAliases(rows, aliases, valueKey) {
+  return Number(
+    rows
+      .filter((row) => rowMatchesProductionAliases(row, aliases))
+      .reduce((sum, row) => sum + Number(row[valueKey] || 0), 0)
+      .toFixed(2)
+  );
+}
+
+function deliveryAliasesForSource(sheetKey) {
+  if (sheetKey === "ready") return ["تسليمات الجاهز", "تسليمات جاهز"];
+  if (sheetKey === "internal") return ["تسليمات الداخلي", "تسليمات داخلي"];
+  if (sheetKey === "wings") return ["تسليمات وينكز", "تسليمات وينكيز", "تسليمات وينكر", "تسليمات رينكيز"];
+  return [];
 }
 
 function toNumber(value) {
@@ -376,7 +455,14 @@ async function fetchProductionSheetRows(sheet) {
     color: indexes.color >= 0 ? String(row[indexes.color] || "").trim() : "",
     quantity: indexes.quantity >= 0 ? toNumber(row[indexes.quantity]) : 0,
     dozens: indexes.dozens >= 0 ? toNumber(row[indexes.dozens]) : 0,
-    destination: indexes.destination >= 0 ? String(row[indexes.destination] || "").trim() : ""
+    destination: indexes.destination >= 0 ? String(row[indexes.destination] || "").trim() : "",
+    lineNameKey: indexes.lineName >= 0 ? normalizeArabicToken(row[indexes.lineName]) : "",
+    itemNameKey: indexes.itemName >= 0 ? normalizeArabicToken(row[indexes.itemName]) : "",
+    destinationKey: indexes.destination >= 0 ? normalizeArabicToken(row[indexes.destination]) : "",
+    colorKey: indexes.color >= 0 ? normalizeArabicToken(row[indexes.color]) : "",
+    sizeKey: indexes.size >= 0 ? normalizeArabicToken(row[indexes.size]) : "",
+    modelCodeKey: indexes.modelCode >= 0 ? normalizeArabicToken(row[indexes.modelCode]) : "",
+    dateMonth: indexes.date >= 0 ? toIsoDate(row[indexes.date]).slice(0, 7) : ""
   }));
 }
 
@@ -385,9 +471,22 @@ async function getProductionRows() {
   if (productionRowsCache.rows.length && now - productionRowsCache.time < PRODUCTION_CACHE_TTL_MS) {
     return productionRowsCache.rows;
   }
-  const rows = (await Promise.all(PRODUCTION_SHEETS.filter((sheet) => sheet.gid).map(fetchProductionSheetRows))).flat();
-  productionRowsCache = { time: now, rows };
-  return rows;
+  if (productionRowsPromise) return productionRowsPromise;
+  productionRowsPromise = (async () => {
+    try {
+      const rows = (await Promise.all(PRODUCTION_SHEETS.filter((sheet) => sheet.gid).map(fetchProductionSheetRows))).flat();
+      productionRowsCache = { time: Date.now(), rows };
+      return rows;
+    } catch (error) {
+      if (productionRowsCache.rows.length) {
+        return productionRowsCache.rows;
+      }
+      throw error;
+    } finally {
+      productionRowsPromise = null;
+    }
+  })();
+  return productionRowsPromise;
 }
 
 function summarizeTop(rows, key, valueKey, limit = 6) {
@@ -1448,6 +1547,10 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
       const size = String(req.body.size || "").trim();
       const month = String(req.body.month || "").trim();
       const model = String(req.body.model || "").trim();
+      const lineKey = normalizeArabicToken(line);
+      const colorKey = normalizeArabicToken(color);
+      const sizeKey = normalizeArabicToken(size);
+      const modelKey = normalizeArabicToken(model);
       const rows = await getProductionRows();
 
       const dateScoped = rows.filter((row) => {
@@ -1462,11 +1565,11 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
       });
 
       const filtered = sourceScoped.filter((row) => {
-        if (line && row.lineName !== line) return false;
-        if (color && row.color !== color) return false;
-        if (size && row.size !== size) return false;
-        if (month && String(row.date || "").slice(0, 7) !== month) return false;
-        if (model && !String(row.modelCode || "").includes(model)) return false;
+        if (lineKey && row.lineNameKey !== lineKey) return false;
+        if (colorKey && row.colorKey !== colorKey) return false;
+        if (sizeKey && row.sizeKey !== sizeKey) return false;
+        if (month && row.dateMonth !== month) return false;
+        if (modelKey && !row.modelCodeKey.includes(modelKey)) return false;
         return true;
       });
 
@@ -1503,10 +1606,15 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
         const sourceRows = dateScoped.filter((row) => row.source === sheet.title);
         const sourceDozens = sourceRows.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
         const sourceQty = sourceRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+        const deliveryAliases = deliveryAliasesForSource(sheet.key);
+        const deliveryDozens = sumProductionRowsByAliases(sourceRows, deliveryAliases, "dozens");
+        const deliveryQuantity = sumProductionRowsByAliases(sourceRows, deliveryAliases, "quantity");
         return {
           source: sheet.title,
-          totalDozens: Number(sourceDozens.toFixed(2)),
-          totalQuantity: Number(sourceQty.toFixed(2)),
+          totalDozens: deliveryDozens,
+          totalQuantity: deliveryQuantity,
+          totalDozensAllStages: Number(sourceDozens.toFixed(2)),
+          totalQuantityAllStages: Number(sourceQty.toFixed(2)),
           recordsCount: sourceRows.length,
           destinationTotals: summarizeAll(sourceRows, "destination", "dozens"),
           lineTotals: summarizeAll(sourceRows, "lineName", "dozens"),

@@ -29,6 +29,10 @@
     dashboardChartView: "trend",
     productionPayload: null,
     productionSourceTab: "",
+    productionRequestCache: new Map(),
+    productionRequestAbortController: null,
+    productionRequestToken: 0,
+    productionRequestTimer: null,
     fieldAnalyticsPayload: null,
     fieldMovementsPayload: null,
     fieldMovementsPage: 1,
@@ -451,20 +455,33 @@
 
     ui.unlockDashboard.addEventListener("click", onUnlockDashboard);
     ui.loadDashboard.addEventListener("click", onLoadDashboard);
-    ui.loadProductionDashboard.addEventListener("click", onLoadProductionDashboard);
+    ui.loadProductionDashboard.addEventListener("click", function () {
+      onLoadProductionDashboard({ forceRefresh: true, announce: true });
+    });
     ui.productionSourceButtons.forEach((button) => {
       button.addEventListener("click", function () {
         state.productionSourceTab = button.dataset.productionSource || "";
         setActiveProductionSourceTab();
-        onLoadProductionDashboard();
+        scheduleProductionDashboardReload(0, { announce: false });
       });
     });
-    [ui.productionLineFilter, ui.productionColorFilter, ui.productionSizeFilter, ui.productionMonthFilter].forEach((element) => {
+    [
+      ui.productionFrom,
+      ui.productionTo,
+      ui.productionLineFilter,
+      ui.productionColorFilter,
+      ui.productionSizeFilter,
+      ui.productionMonthFilter
+    ].forEach((element) => {
       if (!element) return;
-      element.addEventListener("change", onLoadProductionDashboard);
+      element.addEventListener("change", function () {
+        scheduleProductionDashboardReload(160, { announce: false });
+      });
     });
     if (ui.productionModelFilter) {
-      ui.productionModelFilter.addEventListener("change", onLoadProductionDashboard);
+      ui.productionModelFilter.addEventListener("input", function () {
+        scheduleProductionDashboardReload(260, { announce: false });
+      });
     }
     ui.dashboardChartButtons.forEach((button) => {
       button.addEventListener("click", function () {
@@ -605,6 +622,16 @@
     state.dashboardPayload = null;
     state.productionPayload = null;
     state.productionSourceTab = "";
+    if (state.productionRequestTimer) {
+      clearTimeout(state.productionRequestTimer);
+    }
+    if (state.productionRequestAbortController) {
+      state.productionRequestAbortController.abort();
+    }
+    state.productionRequestCache.clear();
+    state.productionRequestAbortController = null;
+    state.productionRequestToken = 0;
+    state.productionRequestTimer = null;
     state.fieldAnalyticsPayload = null;
     state.fieldMovementsPayload = null;
     state.fieldMovementsPage = 1;
@@ -2447,7 +2474,58 @@
     }
   }
 
-  async function onLoadProductionDashboard() {
+  function stableClientCacheString(value) {
+    if (Array.isArray(value)) {
+      return "[" + value.map(stableClientCacheString).join(",") + "]";
+    }
+    if (value && typeof value === "object") {
+      return (
+        "{" +
+        Object.keys(value)
+          .sort()
+          .map((key) => JSON.stringify(key) + ":" + stableClientCacheString(value[key]))
+          .join(",") +
+        "}"
+      );
+    }
+    return JSON.stringify(value);
+  }
+
+  function cleanupProductionRequestCache() {
+    const now = Date.now();
+    Array.from(state.productionRequestCache.entries()).forEach(([key, entry]) => {
+      if (!entry || now - Number(entry.time || 0) > 2 * 60 * 1000) {
+        state.productionRequestCache.delete(key);
+      }
+    });
+  }
+
+  function readCachedProductionPayload(filters) {
+    cleanupProductionRequestCache();
+    const key = stableClientCacheString(filters || {});
+    const entry = state.productionRequestCache.get(key);
+    return entry ? entry.payload : null;
+  }
+
+  function storeCachedProductionPayload(filters, payload) {
+    cleanupProductionRequestCache();
+    const key = stableClientCacheString(filters || {});
+    state.productionRequestCache.set(key, { time: Date.now(), payload });
+  }
+
+  function scheduleProductionDashboardReload(delay, options) {
+    if (state.productionRequestTimer) {
+      clearTimeout(state.productionRequestTimer);
+    }
+    state.productionRequestTimer = setTimeout(() => {
+      state.productionRequestTimer = null;
+      onLoadProductionDashboard(options);
+    }, Math.max(0, Number(delay || 0)));
+  }
+
+  async function onLoadProductionDashboard(options) {
+    const opts = Object.assign({ forceRefresh: false, announce: false }, options || {});
+    let requestToken = 0;
     setBusy(ui.loadProductionDashboard, true, "جارٍ تحميل الإنتاج...");
     try {
       const body = {
@@ -2461,15 +2539,50 @@
         model: ui.productionModelFilter ? ui.productionModelFilter.value.trim() || null : null
       };
       state.productionFilters = body;
-      state.productionPayload = await apiRequest("/api/production-dashboard-v2", {
+      const cachedPayload = !opts.forceRefresh ? readCachedProductionPayload(body) : null;
+      if (cachedPayload) {
+        state.productionPayload = cachedPayload;
+        renderProductionDashboardV2(state.productionPayload);
+        if (opts.announce) {
+          notify("تم تحميل لوحة الإنتاج من الذاكرة المؤقتة.", "success");
+        }
+        return;
+      }
+
+      if (state.productionRequestAbortController) {
+        state.productionRequestAbortController.abort();
+      }
+      const controller = new AbortController();
+      requestToken = state.productionRequestToken + 1;
+      state.productionRequestAbortController = controller;
+      state.productionRequestToken = requestToken;
+
+      const payload = await apiRequest("/api/production-dashboard-v2", {
         method: "POST",
-        body
+        body,
+        signal: controller.signal
       });
+      if (requestToken !== state.productionRequestToken) {
+        return;
+      }
+      state.productionPayload = payload;
+      storeCachedProductionPayload(body, payload);
       renderProductionDashboardV2(state.productionPayload);
-      notify("تم تحميل لوحة الإنتاج.", "success");
+      if (opts.announce) {
+        notify("تم تحميل لوحة الإنتاج.", "success");
+      }
     } catch (error) {
+      if (error && error.name === "AbortError") {
+        return;
+      }
       notify(error.message || "تعذر تحميل بيانات الإنتاج.", "error");
     } finally {
+      if (
+        state.productionRequestAbortController &&
+        (state.productionRequestAbortController.signal.aborted || requestToken === state.productionRequestToken)
+      ) {
+        state.productionRequestAbortController = null;
+      }
       setBusy(ui.loadProductionDashboard, false, "تحميل الإنتاج");
     }
   }
@@ -2790,13 +2903,64 @@ function renderProductionSourceColumnV2(card) {
       .toLowerCase();
   }
 
+  function compactProductionFlowTokenV2(value) {
+    return normalizeProductionFlowTokenV2(value).replace(/\s+/g, "");
+  }
+
+  function looseProductionFlowTokenV2(value) {
+    return compactProductionFlowTokenV2(value)
+      .replace(/[ايوهة]/g, "")
+      .replace(/(.)\1+/g, "$1");
+  }
+
+  function productionFlowDistanceV2(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const matrix = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+    for (let i = 0; i <= a.length; i += 1) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j += 1) matrix[0][j] = j;
+    for (let i = 1; i <= a.length; i += 1) {
+      for (let j = 1; j <= b.length; j += 1) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return matrix[a.length][b.length];
+  }
+
+  function productionFlowAliasMatchV2(label, alias) {
+    const compactLabel = compactProductionFlowTokenV2(label);
+    const compactAlias = compactProductionFlowTokenV2(alias);
+    if (!compactLabel || !compactAlias) return false;
+    if (
+      compactLabel === compactAlias ||
+      compactLabel.includes(compactAlias) ||
+      compactAlias.includes(compactLabel)
+    ) {
+      return true;
+    }
+    const looseLabel = looseProductionFlowTokenV2(label);
+    const looseAlias = looseProductionFlowTokenV2(alias);
+    if (!looseLabel || !looseAlias) return false;
+    if (looseLabel === looseAlias || looseLabel.includes(looseAlias) || looseAlias.includes(looseLabel)) {
+      return true;
+    }
+    const maxDistance = Math.max(1, Math.min(2, Math.floor(Math.max(looseLabel.length, looseAlias.length) / 4)));
+    return productionFlowDistanceV2(looseLabel, looseAlias) <= maxDistance;
+  }
+
   function productionFlowValueV2(card, aliases) {
-    const targets = aliases.map(normalizeProductionFlowTokenV2);
+    const targets = Array.isArray(aliases) ? aliases : [];
     const resolve = (rows) =>
       (Array.isArray(rows) ? rows : [])
         .filter((row) => {
-          const label = normalizeProductionFlowTokenV2(row.label || "");
-          return targets.some((target) => label.includes(target) || target.includes(label));
+          const label = String(row.label || "").trim();
+          return targets.some((target) => productionFlowAliasMatchV2(label, target));
         })
         .reduce((sum, row) => sum + Number(row.total || 0), 0);
     const destinationTotal = resolve(card.destinationTotals);
@@ -3058,7 +3222,12 @@ function renderProductionSourceColumnV2(card) {
     const menCard = cardsBySource.get(SOURCE_INTERNAL) || emptyProductionSourceCardV2(SOURCE_INTERNAL);
     const wingsCard = cardsBySource.get(SOURCE_WINGS) || emptyProductionSourceCardV2(SOURCE_WINGS);
     const selectedSource = payload.selectedSource && payload.selectedSource !== SOURCE_ALL ? payload.selectedSource : "";
-    const internalTotal = Number((menCard.totalDozens || 0) + (wingsCard.totalDozens || 0));
+    const internalDeliveryTotal = Number(menCard.totalDozens || 0);
+    const overviewDeliveryTotal = Number(
+      (readyCard.totalDozens || 0) +
+      (wingsCard.totalDozens || 0) +
+      (menCard.totalDozens || 0)
+    );
 
     const displayTotal =
       selectedSource === SOURCE_READY
@@ -3066,8 +3235,8 @@ function renderProductionSourceColumnV2(card) {
         : selectedSource === SOURCE_WINGS
           ? Number(wingsCard.totalDozens || 0)
           : selectedSource === SOURCE_INTERNAL
-            ? internalTotal
-            : Number((readyCard.totalDozens || 0) + internalTotal);
+            ? internalDeliveryTotal
+            : overviewDeliveryTotal;
 
     if (ui.productionHeadlineTitle) {
       ui.productionHeadlineTitle.textContent = selectedSource
@@ -3088,7 +3257,8 @@ function renderProductionSourceColumnV2(card) {
         readyCard,
         menCard,
         wingsCard,
-        internalTotal
+        internalDeliveryTotal,
+        overviewDeliveryTotal
       });
       ui.productionOverviewBoard.querySelectorAll("[data-production-source-card]").forEach((card) => {
         card.addEventListener("click", function () {
@@ -3222,7 +3392,7 @@ function renderProductionSourceColumnV2(card) {
               <span class="eyebrow">إنتاج مجموعة ساقية إخوان</span>
               <h4>${SOURCE_INTERNAL}</h4>
             </div>
-            <strong>${escapeHtml(formatRoundedNumber(context.internalTotal || 0))}</strong>
+            <strong>${escapeHtml(formatRoundedNumber(context.internalDeliveryTotal || 0))}</strong>
           </div>
           <div class="production-tree-split">
             ${wingsBlock}
@@ -4045,6 +4215,7 @@ function renderScoreList(rows, suffix, formatterFn) {
     const opts = options || {};
     const response = await fetch(apiBaseUrl + path, {
       method: opts.method || "GET",
+      signal: opts.signal,
       headers: Object.assign(
         { "Content-Type": "application/json" },
         state.token ? { Authorization: "Bearer " + state.token } : {},

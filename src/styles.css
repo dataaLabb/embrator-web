@@ -840,6 +840,22 @@ textarea:focus {
   margin-bottom: 18px;
 }
 
+.production-toolbar {
+  position: sticky;
+  top: 10px;
+  z-index: 8;
+  padding: 10px;
+  border-radius: 22px;
+  backdrop-filter: blur(12px);
+  background: rgba(10, 13, 20, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 30px rgba(5, 8, 14, 0.2);
+}
+
+.production-filter-grid {
+  align-items: end;
+}
+
 .production-hero-board {
   margin-bottom: 20px;
   padding: 20px;
@@ -897,11 +913,15 @@ textarea:focus {
 
 .production-overview-board {
   margin-top: 18px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-behavior: smooth;
 }
 
 .production-tree-board {
   display: grid;
   gap: 18px;
+  min-width: min(100%, 980px);
 }
 
 .production-tree-root-card {
@@ -936,6 +956,7 @@ textarea:focus {
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
 .production-tree-panel[data-production-source-card],
@@ -945,6 +966,7 @@ textarea:focus {
 
 .production-tree-panel[data-production-source-card]:hover,
 .production-tree-branch[data-production-source-card]:hover {
+  transform: translateY(-2px);
   border-color: rgba(95, 171, 255, 0.34);
   box-shadow: 0 14px 30px rgba(31, 155, 255, 0.14);
 }
@@ -955,6 +977,11 @@ textarea:focus {
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: 4px;
+  background: linear-gradient(180deg, rgba(15, 18, 24, 0.96), rgba(15, 18, 24, 0.72) 78%, transparent);
 }
 
 .production-tree-panel-head h4,
@@ -1013,6 +1040,12 @@ textarea:focus {
   background: #f6efe4;
   color: #211912;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.production-tree-step:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.18);
 }
 
 .production-tree-step.compact {
@@ -1079,6 +1112,12 @@ textarea:focus {
   color: #181818;
   font-size: 0.94rem;
   font-weight: 800;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.production-branch-token:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
 }
 
 .production-branch-token.men-tone {
