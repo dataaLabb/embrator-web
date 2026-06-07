@@ -2592,24 +2592,24 @@ function renderProductionDashboardV2(payload) {
     }
 
     syncProductionStaticCopy();
-    renderProductionOverviewFlowV2(payload);
+    renderProductionOverviewV2(payload);
     hydrateProductionFiltersV2(payload.filterOptions || {});
 
     ui.productionMetrics.innerHTML = [
-      metricCard("إجمالي الدستة", formatRoundedNumber(payload.totalDozens || 0)),
+      metricCard("إجمالي الدستة", formatNumber(payload.totalDozens || 0)),
       metricCard("عدد السجلات", payload.recordsCount || 0),
       metricCard("عدد القصص", payload.storiesCount || 0),
       metricCard("عدد الموديلات", payload.modelsCount || 0),
       metricCard("عدد الخطوط", payload.linesCount || 0),
-      metricCard("متوسط الدستة/سجل", formatRoundedNumber(payload.averageDozensPerRecord || 0)),
-      metricCard("إجمالي الدستة للفترة", formatRoundedNumber(payload.overallTotalDozens || 0))
+      metricCard("متوسط الدستة/سجل", formatNumber(payload.averageDozensPerRecord || 0)),
+      metricCard("إجمالي الدستة للفترة", formatNumber(payload.overallTotalDozens || 0))
     ].join("");
 
-    if (ui.productionModelsList) ui.productionModelsList.innerHTML = renderScoreList(payload.topModels, "دستة", formatRoundedNumber);
-    if (ui.productionItemsList) ui.productionItemsList.innerHTML = renderScoreList(payload.topItems, "دستة", formatRoundedNumber);
-    if (ui.productionDestinationsList) ui.productionDestinationsList.innerHTML = renderScoreList(payload.topDestinations, "دستة", formatRoundedNumber);
-    if (ui.productionSizesList) ui.productionSizesList.innerHTML = renderScoreList(payload.sizeBreakdown, "دستة", formatRoundedNumber);
-    if (ui.productionColorsList) ui.productionColorsList.innerHTML = renderScoreList(payload.topColors, "دستة", formatRoundedNumber);
+    if (ui.productionModelsList) ui.productionModelsList.innerHTML = renderScoreList(payload.topModels, "دستة", formatNumber);
+    if (ui.productionItemsList) ui.productionItemsList.innerHTML = renderScoreList(payload.topItems, "دستة", formatNumber);
+    if (ui.productionDestinationsList) ui.productionDestinationsList.innerHTML = renderScoreList(payload.topDestinations, "دستة", formatNumber);
+    if (ui.productionSizesList) ui.productionSizesList.innerHTML = renderScoreList(payload.sizeBreakdown, "دستة", formatNumber);
+    if (ui.productionColorsList) ui.productionColorsList.innerHTML = renderScoreList(payload.topColors, "دستة", formatNumber);
     ui.productionRecordsTable.innerHTML = renderProductionRecordsV2(payload.recentRecords || []);
     renderProductionChartsV2(payload);
   }
@@ -2674,7 +2674,11 @@ function renderProductionOverviewV2(payload) {
           : "الرئيسية تعرض توزيع الإنتاج على الجاهز والداخلي ووينكز بالدستة.";
     }
     if (ui.productionOverallTotal) {
-      ui.productionOverallTotal.textContent = formatRoundedNumber(payload.overallTotalDozens || 0);
+      ui.productionOverallTotal.textContent = formatNumber(
+        payload.selectedSource && payload.selectedSource !== "الكل"
+          ? payload.totalDozens || 0
+          : payload.overallTotalDozens || 0
+      );
     }
     if (ui.productionOverviewBoard) {
       ui.productionOverviewBoard.innerHTML = (payload.sourceCards || []).map(renderProductionSourceColumnV2).join("");
@@ -2696,7 +2700,7 @@ function renderProductionSourceColumnV2(card) {
       <article class="production-source-column ${isActive ? "active" : ""}" data-production-source-card="${escapeHtml(card.source)}">
         <header>
           <span>${escapeHtml(card.source)}</span>
-          <strong>${escapeHtml(formatRoundedNumber(card.totalDozens || 0))}</strong>
+          <strong>${escapeHtml(formatNumber(card.totalDozens || 0))}</strong>
         </header>
         <div class="production-source-meta">
           <small>إجمالي الدستة</small>
@@ -2710,7 +2714,7 @@ function renderProductionSourceColumnV2(card) {
                     (row) => `
                       <div class="production-flow-step">
                         <span>${escapeHtml(row.label || "--")}</span>
-                        <strong>${escapeHtml(formatRoundedNumber(row.total || 0))}</strong>
+                        <strong>${escapeHtml(formatNumber(row.total || 0))}</strong>
                       </div>
                     `
                   )
@@ -3212,7 +3216,7 @@ function renderProductionRecordsV2(rows) {
             <td>${escapeHtml(row.itemName || "--")}</td>
             <td>${escapeHtml(row.color || "--")}</td>
             <td>${escapeHtml(row.size || "--")}</td>
-            <td>${escapeHtml(formatRoundedNumber(row.dozens || 0))}</td>
+            <td>${escapeHtml(formatNumber(row.dozens || 0))}</td>
             <td>${escapeHtml(formatNumber(row.quantity || 0))}</td>
             <td>${escapeHtml(row.destination || "--")}</td>
           </tr>
