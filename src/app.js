@@ -2922,6 +2922,243 @@ function renderProductionSourceColumnV2(card) {
     `;
   }
 
+  function syncProductionStaticCopy() {
+    setProductionSectionCopy(
+      "\u0644\u0648\u062D\u0629 \u0627\u0644\u0625\u0646\u062A\u0627\u062C",
+      "\u0634\u0627\u0634\u0629 \u062A\u0646\u0641\u064A\u0630\u064A\u0629 \u062A\u0641\u0627\u0639\u0644\u064A\u0629 \u062A\u0642\u0631\u0623 \u0645\u0646 Google Sheets\u060C \u0648\u062A\u0628\u0646\u064A \u0643\u0644 \u0627\u0644\u0645\u0642\u0627\u0631\u0646\u0627\u062A \u0648\u0627\u0644\u0648\u0635\u0641 \u0639\u0644\u0649 \u0639\u0645\u0648\u062F \u0627\u0644\u0643\u0645\u064A\u0629 \u0628\u0627\u0644\u062F\u0633\u062A\u0629."
+    );
+    setProductionCardCopy(
+      ui.productionDailyChart,
+      "\u0627\u0644\u0625\u0646\u062A\u0627\u062C \u0627\u0644\u0634\u0647\u0631\u064A \u0628\u0627\u0644\u062F\u0633\u062A\u0629",
+      "\u0627\u062A\u062C\u0627\u0647 \u0627\u0644\u0625\u0646\u062A\u0627\u062C \u062E\u0644\u0627\u0644 \u0627\u0644\u0634\u0647\u0648\u0631 \u0627\u0639\u062A\u0645\u0627\u062F\u064B\u0627 \u0639\u0644\u0649 \u0627\u0644\u0643\u0645\u064A\u0629 \u0628\u0627\u0644\u062F\u0633\u062A\u0629 \u0641\u0642\u0637."
+    );
+    setProductionCardCopy(
+      ui.productionSourceChart,
+      "\u062A\u0648\u0632\u064A\u0639 \u0627\u0644\u0648\u062C\u0647\u0627\u062A \u0628\u0627\u0644\u062F\u0633\u062A\u0629",
+      "\u0623\u0643\u062B\u0631 \u0627\u0644\u062C\u0647\u0627\u062A \u0627\u0633\u062A\u0642\u0628\u0627\u0644\u064B\u0627 \u0644\u0644\u0625\u0646\u062A\u0627\u062C \u062F\u0627\u062E\u0644 \u0627\u0644\u062A\u0628\u0648\u064A\u0628 \u0627\u0644\u062D\u0627\u0644\u064A \u0628\u0627\u0644\u062F\u0633\u062A\u0629."
+    );
+    setProductionCardCopy(
+      ui.productionLinesChart,
+      "\u0623\u0641\u0636\u0644 \u0627\u0644\u062E\u0637\u0648\u0637 \u0628\u0627\u0644\u062F\u0633\u062A\u0629",
+      "\u0627\u0644\u062E\u0637\u0648\u0637 \u0627\u0644\u0623\u0639\u0644\u0649 \u0625\u0646\u062A\u0627\u062C\u064B\u0627 \u0639\u0644\u0649 \u0623\u0633\u0627\u0633 \u0627\u0644\u0643\u0645\u064A\u0629 \u0628\u0627\u0644\u062F\u0633\u062A\u0629."
+    );
+    setProductionCardCopy(
+      ui.productionItemsList,
+      "\u0623\u0641\u0636\u0644 \u0627\u0644\u0623\u0635\u0646\u0627\u0641",
+      "\u0645\u0642\u0627\u0631\u0646\u0629 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0645\u0628\u0646\u064A\u0629 \u0639\u0644\u0649 \u0627\u0644\u0643\u0645\u064A\u0629 \u0628\u0627\u0644\u062F\u0633\u062A\u0629."
+    );
+    setProductionCardCopy(
+      ui.productionDestinationsList,
+      "\u0623\u0641\u0636\u0644 \u0627\u0644\u0648\u062C\u0647\u0627\u062A",
+      "\u062A\u0631\u062A\u064A\u0628 \u0627\u0644\u062C\u0647\u0627\u062A \u0648\u0627\u0644\u0623\u0642\u0633\u0627\u0645 \u064A\u062A\u0645 \u0628\u0627\u0644\u062F\u0633\u062A\u0629."
+    );
+    syncProductionTableHeaders();
+  }
+
+  function syncProductionTableHeaders() {
+    const table = ui.productionRecordsTable ? ui.productionRecordsTable.closest("table") : null;
+    if (!table) return;
+    const headers = Array.from(table.querySelectorAll("thead th"));
+    const values = [
+      "\u0627\u0644\u062A\u0627\u0631\u064A\u062E",
+      "\u0627\u0644\u062A\u0634\u063A\u064A\u0644",
+      "\u0627\u0633\u0645 \u0627\u0644\u062E\u0637",
+      "\u0631\u0642\u0645 \u0627\u0644\u0642\u0635\u0629",
+      "\u0643\u0648\u062F \u0627\u0644\u0645\u0648\u062F\u064A\u0644",
+      "\u0627\u0644\u0635\u0646\u0641",
+      "\u0627\u0644\u0644\u0648\u0646",
+      "\u0627\u0644\u0645\u0642\u0627\u0633",
+      "\u0627\u0644\u062F\u0633\u062A\u0629",
+      "\u0627\u0644\u0643\u0645\u064A\u0629",
+      "\u0645\u0648\u062C\u0647 \u0625\u0644\u0649"
+    ];
+    headers.forEach((header, index) => {
+      if (values[index]) header.textContent = values[index];
+    });
+    const head = table.closest(".sub-card");
+    if (head) {
+      const title = head.querySelector("h3");
+      const text = head.querySelector(".muted");
+      if (title) title.textContent = "\u0623\u062D\u062F\u062B \u0633\u062C\u0644\u0627\u062A \u0627\u0644\u0625\u0646\u062A\u0627\u062C";
+      if (text) {
+        text.textContent =
+          "\u0627\u0644\u0633\u062C\u0644 \u064A\u0639\u0631\u0636 \u0627\u0644\u062F\u0633\u062A\u0629 \u0643\u0645\u0631\u062C\u0639 \u0623\u0633\u0627\u0633\u064A\u060C \u0645\u0639 \u0625\u0628\u0642\u0627\u0621 \u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u062E\u0627\u0645 \u0644\u0644\u0645\u0631\u0627\u062C\u0639\u0629 \u0641\u0642\u0637.";
+      }
+    }
+  }
+
+  function normalizeProductionFlowTokenV2(value) {
+    return String(value || "")
+      .replace(/[\u0623\u0625\u0622]/g, "\u0627")
+      .replace(/\u0649/g, "\u064A")
+      .replace(/\u0629/g, "\u0647")
+      .replace(/[()]/g, "")
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function renderProductionOverviewFlowV2(payload) {
+    const SOURCE_ALL = "\u0627\u0644\u0643\u0644";
+    const SOURCE_READY = "\u0627\u0644\u062C\u0627\u0647\u0632";
+    const SOURCE_INTERNAL = "\u062F\u0627\u062E\u0644\u064A";
+    const SOURCE_WINGS = "\u0648\u064A\u0646\u0643\u0632";
+
+    const sourceCards = Array.isArray(payload.sourceCards) ? payload.sourceCards : [];
+    const cardsBySource = new Map(sourceCards.map((card) => [card.source, card]));
+    const readyCard = cardsBySource.get(SOURCE_READY) || emptyProductionSourceCardV2(SOURCE_READY);
+    const menCard = cardsBySource.get(SOURCE_INTERNAL) || emptyProductionSourceCardV2(SOURCE_INTERNAL);
+    const wingsCard = cardsBySource.get(SOURCE_WINGS) || emptyProductionSourceCardV2(SOURCE_WINGS);
+    const selectedSource = payload.selectedSource && payload.selectedSource !== SOURCE_ALL ? payload.selectedSource : "";
+    const internalTotal = Number((menCard.totalDozens || 0) + (wingsCard.totalDozens || 0));
+
+    const displayTotal =
+      selectedSource === SOURCE_READY
+        ? Number(readyCard.totalDozens || 0)
+        : selectedSource === SOURCE_WINGS
+          ? Number(wingsCard.totalDozens || 0)
+          : selectedSource === SOURCE_INTERNAL
+            ? internalTotal
+            : Number((readyCard.totalDozens || 0) + internalTotal);
+
+    if (ui.productionHeadlineTitle) {
+      ui.productionHeadlineTitle.textContent = selectedSource
+        ? `\u0625\u0646\u062A\u0627\u062C ${selectedSource}`
+        : "\u0625\u0646\u062A\u0627\u062C \u0645\u062C\u0645\u0648\u0639\u0629 \u0633\u0645\u0627\u0642\u064A\u0629 \u0625\u062E\u0648\u0627\u0646";
+    }
+    if (ui.productionHeadlineCaption) {
+      ui.productionHeadlineCaption.textContent = selectedSource
+        ? `\u0627\u0644\u062A\u062F\u0641\u0642 \u0627\u0644\u062D\u0627\u0644\u064A \u0645\u0631\u062A\u0628 \u0628\u0627\u0644\u062F\u0633\u062A\u0629 \u0644\u0645\u0633\u0627\u0631 ${selectedSource}.`
+        : "\u0627\u0644\u062A\u062F\u0641\u0642 \u0627\u0644\u0631\u0626\u064A\u0633\u064A \u0645\u0631\u062A\u0628 \u0628\u0627\u0644\u062F\u0633\u062A\u0629 \u0648\u0645\u0628\u0646\u064A \u0639\u0644\u0649 \u0646\u0641\u0633 \u062A\u0631\u062A\u064A\u0628 \u062E\u0637\u0648\u0637 \u0627\u0644\u0625\u0646\u062A\u0627\u062C.";
+    }
+    if (ui.productionOverallTotal) {
+      ui.productionOverallTotal.textContent = formatRoundedNumber(displayTotal || 0);
+    }
+    if (ui.productionOverviewBoard) {
+      ui.productionOverviewBoard.innerHTML = renderProductionFlowBoardMarkupV2({
+        selectedSource,
+        readyCard,
+        menCard,
+        wingsCard,
+        internalTotal
+      });
+      ui.productionOverviewBoard.querySelectorAll("[data-production-source-card]").forEach((card) => {
+        card.addEventListener("click", function () {
+          state.productionSourceTab = card.dataset.productionSourceCard || "";
+          setActiveProductionSourceTab();
+          onLoadProductionDashboard();
+        });
+      });
+    }
+    setActiveProductionSourceTab();
+  }
+
+  function renderProductionFlowBoardMarkupV2(context) {
+    const SOURCE_READY = "\u0627\u0644\u062C\u0627\u0647\u0632";
+    const SOURCE_INTERNAL = "\u062F\u0627\u062E\u0644\u064A";
+    const SOURCE_WINGS = "\u0648\u064A\u0646\u0643\u0632";
+
+    const readySteps = [
+      { label: "\u0627\u0644\u0642\u0635 \u0627\u0644\u062C\u0627\u0647\u0632", aliases: ["\u0627\u0644\u0642\u0635 \u0627\u0644\u062C\u0627\u0647\u0632", "\u0642\u0635 \u0627\u0644\u062C\u0627\u0647\u0632"] },
+      { label: "\u0643\u0646\u062A\u0631\u0648\u0644", aliases: ["\u0643\u0646\u062A\u0631\u0648\u0644", "\u0627\u0644\u0643\u0646\u062A\u0631\u0648\u0644"] },
+      { label: "\u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0646\u0637\u0644\u0648\u0646", aliases: ["\u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0646\u0637\u0644\u0648\u0646"] },
+      { label: "\u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u062A\u0648\u0628", aliases: ["\u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u062A\u0648\u0628"] },
+      { label: "\u0641\u0631\u0632 \u0627\u0644\u062C\u0627\u0647\u0632", aliases: ["\u0641\u0631\u0632 \u0627\u0644\u062C\u0627\u0647\u0632", "\u0627\u0644\u0641\u0631\u0632"] },
+      { label: "\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0627\u0644\u062C\u0627\u0647\u0632", aliases: ["\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0627\u0644\u062C\u0627\u0647\u0632"] }
+    ];
+
+    const wingsSteps = [
+      { label: "\u0627\u0644\u0642\u0635", aliases: ["\u0627\u0644\u0642\u0635"] },
+      { label: "\u0643\u0646\u062A\u0631\u0648\u0644", aliases: ["\u0643\u0646\u062A\u0631\u0648\u0644", "\u0627\u0644\u0643\u0646\u062A\u0631\u0648\u0644"] },
+      { label: "\u062E\u0637 \u0627\u0644\u0628\u064A\u0628\u064A", aliases: ["\u062E\u0637 \u0627\u0644\u0628\u064A\u0628\u064A", "\u062E\u0637 \u0627\u0644\u0628\u064A\u062A\u064A"] },
+      { label: "\u0641\u062A\u0627\u0644\u0629 \u0648\u064A\u0646\u0643\u0632", aliases: ["\u0641\u062A\u0627\u0644\u0629 \u0648\u064A\u0646\u0643\u0632", "\u0642\u0646\u0627\u0644\u0629 \u0648\u064A\u0646\u0643\u0632", "\u0642\u0646\u0627\u0646\u0647 \u0648\u064A\u0646\u0643\u0632"] },
+      { label: "\u0634\u0648\u064A\u062A \u0648\u064A\u0646\u0643\u0632", aliases: ["\u0634\u0648\u064A\u062A \u0648\u064A\u0646\u0643\u0632"] },
+      { label: "\u0627\u0644\u0641\u0631\u0632", aliases: ["\u0627\u0644\u0641\u0631\u0632"] },
+      { label: "\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0648\u064A\u0646\u0643\u0632", aliases: ["\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0648\u064A\u0646\u0643\u0632"] }
+    ];
+
+    const menMainSteps = [
+      { label: "\u0627\u0644\u0642\u0635", aliases: ["\u0627\u0644\u0642\u0635"] },
+      { label: "\u0627\u0644\u0643\u0646\u062A\u0631\u0648\u0644", aliases: ["\u0627\u0644\u0643\u0646\u062A\u0631\u0648\u0644", "\u0643\u0646\u062A\u0631\u0648\u0644"] },
+      { label: "\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u064A\u062A", aliases: ["\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u064A\u062A", "\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u0631\u062A", "\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u0628\u062A"] },
+      { label: "\u0633\u064A\u0648\u0631", aliases: ["\u0633\u064A\u0648\u0631"] },
+      { label: "\u0633\u064A\u0648\u0631 \u0645\u062A\u0646\u0648\u0639", aliases: ["\u0633\u064A\u0648\u0631 \u0645\u062A\u0646\u0648\u0639"] },
+      { label: "\u062C\u0648\u0643\u0631 \u0628\u0631\u0627\u064A\u0631", aliases: ["\u062C\u0648\u0643\u0631 \u0628\u0631\u0627\u064A\u0631", "\u062C\u0648\u0643\u0631", "\u0628\u0631\u0627\u064A\u0631"] },
+      { label: "\u0633\u0644\u064A\u0628", aliases: ["\u0633\u0644\u064A\u0628"] },
+      { label: "\u0647\u0627\u0641 \u0634\u0648\u064A\u062A", aliases: ["\u0647\u0627\u0641 \u0634\u0648\u064A\u062A", "\u0647\u0627\u0641 \u0634\u0648\u0631\u062A"] },
+      { label: "\u0647\u0648\u062A \u0645\u0627\u0646 \u0641\u0627\u0646\u0644\u0629", aliases: ["\u0647\u0648\u062A \u0645\u0627\u0646 \u0641\u0627\u0646\u0644\u0629", "\u0647\u0648\u062A \u0645\u0627\u0646 \u0642\u0646\u0627\u0644\u0629"] },
+      { label: "\u0627\u0644\u0641\u0631\u0632", aliases: ["\u0627\u0644\u0641\u0631\u0632"] },
+      { label: "\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0627\u0644\u062F\u0627\u062E\u0644\u064A", aliases: ["\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0627\u0644\u062F\u0627\u062E\u0644\u064A"] }
+    ];
+
+    const menSideSteps = [
+      { label: "\u0646\u0635 \u0643\u0645", aliases: ["\u0646\u0635 \u0643\u0645"] },
+      { label: "\u0646\u0635 \u0643\u0645 \u0645\u062A\u0641\u0631\u0639", aliases: ["\u0646\u0635 \u0643\u0645 \u0645\u062A\u0641\u0631\u0639"] },
+      { label: "\u0647\u0648\u062A \u0645\u0627\u0646 \u0643\u0644\u0633\u0648\u0646", aliases: ["\u0647\u0648\u062A \u0645\u0627\u0646 \u0643\u0644\u0633\u0648\u0646", "\u0647\u0648\u062A \u0645\u0627\u0646 \u0643\u0644\u0648\u062A"] },
+      { label: "\u0647\u0627\u0641 \u0634\u0648\u064A\u062A \u0634\u0648\u0631\u062A\u064A\u0646", aliases: ["\u0647\u0627\u0641 \u0634\u0648\u064A\u062A \u0634\u0648\u0631\u062A\u064A\u0646", "\u0647\u0627\u0641 \u0634\u0648\u0631\u062A \u0634\u0648\u0631\u062A\u064A\u0646"] }
+    ];
+
+    const allView = !context.selectedSource;
+    const showReady = allView || context.selectedSource === SOURCE_READY;
+    const showInternal = allView || context.selectedSource === SOURCE_INTERNAL;
+    const showWingsOnly = context.selectedSource === SOURCE_WINGS;
+
+    const readyBlock = showReady
+      ? `
+        <section class="production-lane ready-lane" data-production-source-card="${SOURCE_READY}">
+          <div class="production-lane-total">${productionFlowStepMarkupV2(SOURCE_READY, context.readyCard.totalDozens || 0, "lane-total")}</div>
+          ${renderProductionFlowChainMarkupV2(context.readyCard, readySteps, "ready-chain")}
+        </section>
+      `
+      : "";
+
+    const wingsBlock = `
+      <section class="production-sub-lane wings-lane" data-production-source-card="${SOURCE_WINGS}">
+        <div class="production-lane-total">${productionFlowStepMarkupV2(SOURCE_WINGS, context.wingsCard.totalDozens || 0, "lane-total")}</div>
+        ${renderProductionFlowChainMarkupV2(context.wingsCard, wingsSteps, "wings-chain")}
+      </section>
+    `;
+
+    const menBlock = `
+      <section class="production-sub-lane men-lane" data-production-source-card="${SOURCE_INTERNAL}">
+        <div class="production-lane-total">${productionFlowStepMarkupV2("\u0631\u062C\u0627\u0644\u064A", context.menCard.totalDozens || 0, "lane-total")}</div>
+        <div class="production-men-grid">
+          <div class="production-men-side side-left">
+            ${menSideSteps.slice(0, 2).map((step) => productionFlowStepMarkupV2(step.label, productionFlowValueV2(context.menCard, step.aliases), "minor-node")).join("")}
+          </div>
+          ${renderProductionFlowChainMarkupV2(context.menCard, menMainSteps, "men-chain")}
+          <div class="production-men-side side-right">
+            ${menSideSteps.slice(2).map((step) => productionFlowStepMarkupV2(step.label, productionFlowValueV2(context.menCard, step.aliases), "minor-node")).join("")}
+          </div>
+        </div>
+      </section>
+    `;
+
+    if (showWingsOnly) {
+      return `<div class="production-flowboard single-source">${wingsBlock}</div>`;
+    }
+
+    const internalBlock = showInternal
+      ? `
+        <section class="production-internal-group" data-production-source-card="${SOURCE_INTERNAL}">
+          <div class="production-internal-total">${productionFlowStepMarkupV2(SOURCE_INTERNAL, context.internalTotal || 0, "lane-total internal-total")}</div>
+          <div class="production-internal-split">
+            ${wingsBlock}
+            ${menBlock}
+          </div>
+        </section>
+      `
+      : "";
+
+    return `
+      <div class="production-flowboard ${allView ? "overview-mode" : "single-source"}">
+        ${internalBlock}
+        ${readyBlock}
+      </div>
+    `;
+  }
+
   function hydrateProductionFiltersV2(filterOptions) {
     populateSelectV2(ui.productionLineFilter, filterOptions.lines || [], state.productionFilters && state.productionFilters.line);
     populateSelectV2(ui.productionColorFilter, filterOptions.colors || [], state.productionFilters && state.productionFilters.color);
