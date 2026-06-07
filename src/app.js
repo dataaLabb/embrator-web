@@ -43,8 +43,10 @@
     },
     customerEditorCode: "",
     customerSearch: "",
+    customersPage: 1,
     itemEditorCode: "",
     itemSearch: "",
+    itemsPage: 1,
     userEditorId: "",
     userSearch: "",
     charts: {}
@@ -119,6 +121,9 @@
 
     ui.orderModel = document.getElementById("order-model");
     ui.orderItem = document.getElementById("order-item");
+    ui.orderColor = document.getElementById("order-color");
+    ui.orderSize = document.getElementById("order-size");
+    ui.orderUnit = document.getElementById("order-unit");
     ui.orderQty = document.getElementById("order-qty");
     ui.addOrderLine = document.getElementById("add-order-line");
     ui.orderLines = document.getElementById("order-lines");
@@ -147,20 +152,42 @@
     ui.customerForm = document.getElementById("customer-form");
     ui.customerFormTitle = document.getElementById("customer-form-title");
     ui.customerFormReset = document.getElementById("customer-form-reset");
+    ui.customerBranchCode = document.getElementById("customer-branch-code");
     ui.customerCode = document.getElementById("customer-code");
     ui.customerName = document.getElementById("customer-name");
     ui.customerRep = document.getElementById("customer-rep");
+    ui.customerRepCode = document.getElementById("customer-rep-code");
     ui.customerCategory = document.getElementById("customer-category");
+    ui.customerCategory1 = document.getElementById("customer-category1");
+    ui.customerCategory2 = document.getElementById("customer-category2");
+    ui.customerCategory3 = document.getElementById("customer-category3");
+    ui.customerCategory4 = document.getElementById("customer-category4");
+    ui.customerCategory5 = document.getElementById("customer-category5");
     ui.customerSector = document.getElementById("customer-sector");
+    ui.customerSectorCode = document.getElementById("customer-sector-code");
     ui.customerArea = document.getElementById("customer-area");
+    ui.customerAreaCode = document.getElementById("customer-area-code");
     ui.customerAddress = document.getElementById("customer-address");
     ui.customerPhone = document.getElementById("customer-phone");
+    ui.customerMobile = document.getElementById("customer-mobile");
+    ui.customerFax = document.getElementById("customer-fax");
     ui.customerEmail = document.getElementById("customer-email");
+    ui.customerType = document.getElementById("customer-type");
+    ui.customerDiscount = document.getElementById("customer-discount");
+    ui.customerCreditLimit = document.getElementById("customer-credit-limit");
+    ui.customerReceivablesCreditLimit = document.getElementById("customer-receivables-credit-limit");
+    ui.customerBouncedCount = document.getElementById("customer-bounced-count");
+    ui.customerCreditLimitExceeded = document.getElementById("customer-credit-limit-exceeded");
+    ui.customerMaxOpenInvoices = document.getElementById("customer-max-open-invoices");
+    ui.customerTermsCredit = document.getElementById("customer-terms-credit");
+    ui.customerReceivablesTerms = document.getElementById("customer-receivables-terms");
+    ui.customerParentCode = document.getElementById("customer-parent-code");
     ui.customerActive = document.getElementById("customer-active");
     ui.customerSubmit = document.getElementById("customer-submit");
     ui.refreshCustomers = document.getElementById("refresh-customers");
     ui.customersSearch = document.getElementById("customers-search");
     ui.customersTable = document.getElementById("customers-table");
+    ui.customersPager = document.getElementById("customers-pager");
 
     ui.itemForm = document.getElementById("item-form");
     ui.itemFormTitle = document.getElementById("item-form-title");
@@ -172,10 +199,12 @@
     ui.itemPrice = document.getElementById("item-price");
     ui.itemActive = document.getElementById("item-active");
     ui.itemDescription = document.getElementById("item-description");
+    ui.itemVariants = document.getElementById("item-variants");
     ui.itemSubmit = document.getElementById("item-submit");
     ui.refreshItems = document.getElementById("refresh-items");
     ui.itemsSearch = document.getElementById("items-search");
     ui.itemsTable = document.getElementById("items-table");
+    ui.itemsPager = document.getElementById("items-pager");
 
     ui.userForm = document.getElementById("user-form");
     ui.userFormTitle = document.getElementById("user-form-title");
@@ -294,6 +323,8 @@
     ui.captureOrderLocation.addEventListener("click", () => captureLocation("order", ui.captureOrderLocation));
 
     ui.orderModel.addEventListener("change", renderOrderItemOptions);
+    ui.orderItem.addEventListener("change", renderOrderColorOptions);
+    ui.orderColor.addEventListener("change", renderOrderVariantDetails);
     ui.addOrderLine.addEventListener("click", onAddOrderLine);
     ui.confirmOrder.addEventListener("click", onConfirmOrder);
     ui.cancelOrder.addEventListener("click", onCancelOrder);
@@ -315,6 +346,7 @@
     ui.refreshCustomers.addEventListener("click", refreshLookupsAndLists);
     ui.customersSearch.addEventListener("input", function () {
       state.customerSearch = ui.customersSearch.value.trim();
+      state.customersPage = 1;
       renderCustomersTable();
     });
 
@@ -323,6 +355,7 @@
     ui.refreshItems.addEventListener("click", refreshLookupsAndLists);
     ui.itemsSearch.addEventListener("input", function () {
       state.itemSearch = ui.itemsSearch.value.trim();
+      state.itemsPage = 1;
       renderItemsTable();
     });
 
@@ -661,7 +694,55 @@
   function renderAllFilterGroups() {
     renderCustomerFilters(ui.visitFilters, state.visit, "visit");
     renderCustomerFilters(ui.collectionFilters, state.collection, "collection");
-    renderCustomerFilters(ui.orderCustomerFilters, state.orderFilters, "order");
+    renderOrderCustomerFilters();
+  }
+
+  function renderOrderCustomerFilters() {
+    const activeCustomers = state.customers.filter((entry) => entry.is_active !== false);
+    const scoped = scopedCustomers(activeCustomers, state.orderFilters);
+    const selectedCustomer = findCustomer(state.orderFilters.customerCode);
+
+    ui.orderCustomerFilters.innerHTML = [
+      buildSelect("order-rep", "المندوب", unique(activeCustomers.map((entry) => entry.rep)), state.orderFilters.rep),
+      buildSelect("order-sector", "القطاع", unique(scoped.byCategory.map((entry) => entry.sector)), state.orderFilters.sector),
+      buildSelect("order-area", "المنطقة", unique(scoped.bySector.map((entry) => entry.area)), state.orderFilters.area),
+      buildSelect(
+        "order-customer",
+        "اسم العميل",
+        scoped.final.map((entry) => ({ value: entry.code, label: entry.name })),
+        state.orderFilters.customerCode
+      ),
+      `
+        <label class="field">
+          <span>كود العميل</span>
+          <input id="order-customer-code" type="text" value="${escapeHtml((selectedCustomer && selectedCustomer.code) || "")}" readonly />
+        </label>
+      `
+    ].join("");
+
+    bindFilterChange(ui.orderCustomerFilters, "order-rep", (value) => {
+      state.orderFilters.rep = value;
+      state.orderFilters.category = "";
+      state.orderFilters.sector = "";
+      state.orderFilters.area = "";
+      state.orderFilters.customerCode = "";
+      renderAllFilterGroups();
+    });
+    bindFilterChange(ui.orderCustomerFilters, "order-sector", (value) => {
+      state.orderFilters.sector = value;
+      state.orderFilters.area = "";
+      state.orderFilters.customerCode = "";
+      renderAllFilterGroups();
+    });
+    bindFilterChange(ui.orderCustomerFilters, "order-area", (value) => {
+      state.orderFilters.area = value;
+      state.orderFilters.customerCode = "";
+      renderAllFilterGroups();
+    });
+    bindFilterChange(ui.orderCustomerFilters, "order-customer", (value) => {
+      state.orderFilters.customerCode = value;
+      renderAllFilterGroups();
+    });
   }
 
   function renderCustomerFilters(host, filters, prefix) {
@@ -867,6 +948,74 @@
     renderOrderItemOptions();
   }
 
+  function orderSizePayload() {
+    const size = String(ui.orderSize.value || "").trim().toUpperCase();
+    const qty = Number(ui.orderQty.value || 0);
+    return {
+      sizeS: size === "S" ? qty : 0,
+      sizeM: size === "M" ? qty : 0,
+      sizeL: size === "L" ? qty : 0,
+      sizeXl: size === "XL" ? qty : 0,
+      size2xl: size === "2XL" ? qty : 0,
+      size3xl: size === "3XL" ? qty : 0,
+      size4xl: size === "4XL" ? qty : 0
+    };
+  }
+
+  function orderSizesTotal(payload) {
+    return [
+      payload.sizeS,
+      payload.sizeM,
+      payload.sizeL,
+      payload.sizeXl,
+      payload.size2xl,
+      payload.size3xl,
+      payload.size4xl
+    ].reduce((sum, value) => sum + Number(value || 0), 0);
+  }
+
+  function syncOrderQtyFromSizes() {
+    ui.orderQty.value = String(orderSizesTotal(orderSizePayload()));
+  }
+
+  function resetOrderVariantInputs() {
+    ui.orderColor.innerHTML = '<option value="">Choose Color</option>';
+    ui.orderColor.value = "";
+    ui.orderSize.innerHTML = '<option value="">Choose Size</option>';
+    ui.orderSize.value = "";
+    ui.orderUnit.innerHTML = '<option value="">Choose Unit</option>';
+    ui.orderUnit.value = "";
+    ui.orderQty.value = "1";
+  }
+
+  function lineSizesSummary(line) {
+    const pairs = [
+      ["S", line.size_s],
+      ["M", line.size_m],
+      ["L", line.size_l],
+      ["XL", line.size_xl],
+      ["2XL", line.size_2xl],
+      ["3XL", line.size_3xl],
+      ["4XL", line.size_4xl]
+    ].filter((entry) => Number(entry[1] || 0) > 0);
+    return pairs.length
+      ? pairs.map((entry) => `${entry[0]}: ${formatNumber(entry[1])}`).join(" | ")
+      : "--";
+  }
+
+  function singleSizeLabel(line) {
+    const pairs = [
+      ["S", line.size_s],
+      ["M", line.size_m],
+      ["L", line.size_l],
+      ["XL", line.size_xl],
+      ["2XL", line.size_2xl],
+      ["3XL", line.size_3xl],
+      ["4XL", line.size_4xl]
+    ].filter((entry) => Number(entry[1] || 0) > 0);
+    return pairs.length === 1 ? pairs[0][0] : lineSizesSummary(line);
+  }
+
   function renderOrderItemOptions() {
     const selectedModel = ui.orderModel.value || "";
     const items = state.items
@@ -875,34 +1024,85 @@
       .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 
     ui.orderItem.innerHTML =
-      `<option value="">اختر الصنف</option>` +
+      `<option value="">Choose Item</option>` +
       items
         .map(
           (entry) =>
             `<option value="${escapeHtml(entry.code)}">${escapeHtml(entry.code)} | ${escapeHtml(entry.name)}</option>`
         )
         .join("");
+    resetOrderVariantInputs();
+  }
+
+  function renderOrderColorOptions() {
+    const item = state.items.find((entry) => entry.code === ui.orderItem.value);
+    const colors = unique(
+      (item && Array.isArray(item.variants) ? item.variants : [])
+        .map((variant) => String(variant.color || "").trim())
+        .filter(Boolean)
+    );
+
+    if (!colors.length) {
+      ui.orderColor.innerHTML = '<option value="">No Color</option>';
+      ui.orderColor.value = "";
+      renderOrderVariantDetails();
+      return;
+    }
+
+    ui.orderColor.innerHTML =
+      '<option value="">Choose Color</option>' +
+      colors.map((color) => `<option value="${escapeHtml(color)}">${escapeHtml(color)}</option>`).join("");
+    renderOrderVariantDetails();
+  }
+
+  function renderOrderVariantDetails() {
+    const item = state.items.find((entry) => entry.code === ui.orderItem.value);
+    const selectedColor = String(ui.orderColor.value || "").trim();
+    const variants = item && Array.isArray(item.variants)
+      ? item.variants.filter((variant) => !selectedColor || String(variant.color || "").trim() === selectedColor)
+      : [];
+    const sizes = unique(variants.map((variant) => String(variant.size || "").trim()).filter(Boolean));
+    const units = unique(variants.map((variant) => String(variant.unit || item.unit || "").trim()).filter(Boolean));
+
+    ui.orderSize.innerHTML =
+      '<option value="">Choose Size</option>' +
+      sizes.map((size) => `<option value="${escapeHtml(size)}">${escapeHtml(size)}</option>`).join("");
+    ui.orderUnit.innerHTML =
+      '<option value="">Choose Unit</option>' +
+      units.map((unit) => `<option value="${escapeHtml(unit)}">${escapeHtml(unit)}</option>`).join("");
+
+    if (sizes.length === 1) ui.orderSize.value = sizes[0];
+    if (units.length === 1) ui.orderUnit.value = units[0];
   }
 
   async function onAddOrderLine() {
     const customer = findCustomer(state.orderFilters.customerCode);
     const item = state.items.find((entry) => entry.code === ui.orderItem.value);
-    const qty = Number(ui.orderQty.value || 0);
+    const sizes = orderSizePayload();
+    const qty = orderSizesTotal(sizes);
 
     if (!customer) {
-      notify("اختر العميل أولًا.", "error");
+      notify("Choose customer first.", "error");
       return;
     }
     if (!item) {
-      notify("اختر الصنف أولًا.", "error");
+      notify("Choose item first.", "error");
+      return;
+    }
+    if (!ui.orderSize.value) {
+      notify("Choose size first.", "error");
+      return;
+    }
+    if (!ui.orderUnit.value) {
+      notify("Choose unit first.", "error");
       return;
     }
     if (qty <= 0) {
-      notify("الكمية يجب أن تكون أكبر من صفر.", "error");
+      notify("Enter a valid quantity.", "error");
       return;
     }
 
-    setBusy(ui.addOrderLine, true, "جارٍ الإضافة...");
+    setBusy(ui.addOrderLine, true, "Adding...");
     try {
       const result = await apiRequest("/api/orders/line", {
         method: "POST",
@@ -910,8 +1110,16 @@
           {
             orderCode: state.orderDraft.code || "",
             customer,
-            item,
-            qty
+            item: Object.assign({}, item, { unit: ui.orderUnit.value }),
+            color: ui.orderColor.value.trim(),
+            qty,
+            sizeS: sizes.sizeS,
+            sizeM: sizes.sizeM,
+            sizeL: sizes.sizeL,
+            sizeXl: sizes.sizeXl,
+            size2xl: sizes.size2xl,
+            size3xl: sizes.size3xl,
+            size4xl: sizes.size4xl
           },
           locationPayload("order")
         )
@@ -922,21 +1130,21 @@
       state.lastCompletedOrder = null;
       renderOrderLines();
       ui.orderItem.value = "";
-      ui.orderQty.value = "1";
-      notify("تمت إضافة البند.", "success");
+      resetOrderVariantInputs();
+      notify("Line added.", "success");
     } catch (error) {
-      notify(error.message || "تعذر إضافة البند.", "error");
+      notify(error.message || "Could not add line.", "error");
     } finally {
-      setBusy(ui.addOrderLine, false, "إضافة البند");
+      setBusy(ui.addOrderLine, false, "Add Line");
     }
   }
 
   function renderOrderLines() {
     const totalQty = state.orderDraft.lines.reduce((sum, line) => sum + Number(line.qty || 0), 0);
     ui.orderCodeLabel.textContent = state.orderDraft.code
-      ? "كود الطلبية: " + state.orderDraft.code
-      : "لا توجد طلبية مفتوحة الآن";
-    ui.orderCodeBadge.textContent = state.orderDraft.code || "لم يبدأ بعد";
+      ? "Order Code: " + state.orderDraft.code
+      : "No open order yet";
+    ui.orderCodeBadge.textContent = state.orderDraft.code || "Not started";
     ui.orderLinesCount.textContent = String(state.orderDraft.lines.length);
     ui.orderTotalQty.textContent = formatNumber(totalQty);
 
@@ -945,11 +1153,11 @@
       : state.orderDraft.id
         ? "draft"
         : "";
-    ui.orderStatusBadge.textContent = status ? statusLabel(status) : "جاهزة";
+    ui.orderStatusBadge.textContent = status ? statusLabel(status) : "Ready";
     ui.orderStatusBadge.className = status ? statusClass(status) : "pill pill-draft";
 
     if (state.lastCompletedOrder) {
-      ui.orderCompleteBanner.textContent = `تم حفظ الطلبية ${state.lastCompletedOrder.order_code} وحالتها الآن ${statusLabel(
+      ui.orderCompleteBanner.textContent = `Order ${state.lastCompletedOrder.order_code} saved with status ${statusLabel(
         state.lastCompletedOrder.status
       )}.`;
       ui.orderCompleteBanner.classList.remove("hidden");
@@ -958,7 +1166,7 @@
     }
 
     if (!state.orderDraft.lines.length) {
-      ui.orderLines.innerHTML = `<tr><td colspan="4" class="empty-state">لا توجد بنود بعد</td></tr>`;
+      ui.orderLines.innerHTML = '<tr><td colspan="8" class="empty-state">No lines yet</td></tr>';
       return;
     }
 
@@ -966,10 +1174,14 @@
       .map(
         (line) => `
           <tr>
-            <td>${escapeHtml(line.item_code)} | ${escapeHtml(line.item_name)}</td>
-            <td>${escapeHtml(line.unit)}</td>
+            <td>${escapeHtml(line.item_code || "")}</td>
+            <td>${escapeHtml(line.model || "--")}</td>
+            <td>${escapeHtml(line.item_name || "")}</td>
+            <td>${escapeHtml(line.color || "--")}</td>
+            <td>${escapeHtml(singleSizeLabel(line))}</td>
+            <td>${escapeHtml(line.unit || "--")}</td>
             <td>${escapeHtml(formatNumber(line.qty))}</td>
-            <td><button class="btn btn-soft line-delete" data-id="${escapeHtml(line.id)}" type="button">حذف</button></td>
+            <td><button class="btn btn-soft line-delete" data-id="${escapeHtml(line.id)}" type="button">Delete</button></td>
           </tr>
         `
       )
@@ -1180,116 +1392,132 @@
 
   function renderOrderDetailsDialog(order, lines) {
     const totalQty = lines.reduce((sum, line) => sum + Number(line.qty || 0), 0);
-    ui.detailsTitle.textContent = `تفاصيل الطلبية: ${order.order_code || ""}`;
+    const createdAt = order.created_at || "";
+    const mapUrl = safeHref(order.map_url);
+    ui.detailsTitle.textContent = `Order Details: ${order.order_code || ""}`;
     ui.orderDetailsContent.innerHTML = `
-      <div class="detail-hero">
-        <section class="detail-banner">
-          <p class="eyebrow">Order Snapshot</p>
-          <h3>${escapeHtml(order.order_code || "")}</h3>
-          <p>${escapeHtml(order.customer_name || "")} • ${escapeHtml(order.rep || "بدون مندوب")}</p>
-          <div class="badge-row" style="margin-top:12px">
+      <section class="order-sheet">
+        <header class="order-sheet-header">
+          <h2>&#1578;&#1601;&#1575;&#1589;&#1610;&#1604; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577;: ${escapeHtml(order.order_code || "")}</h2>
+          <button class="btn btn-soft order-sheet-back" type="button">&#1575;&#1604;&#1593;&#1608;&#1583;&#1577;</button>
+        </header>
+
+        <div class="order-sheet-separator"></div>
+
+        <section class="order-sheet-card order-sheet-info">
+          <div class="order-sheet-card-head">
+            <h3>&#1605;&#1593;&#1604;&#1608;&#1605;&#1575;&#1578; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577;</h3>
             <span class="${statusClass(order.status)}">${escapeHtml(statusLabel(order.status))}</span>
-            <span class="pill pill-accent">عدد البنود: ${escapeHtml(String(lines.length))}</span>
-            <span class="pill pill-confirmed">إجمالي الكمية: ${escapeHtml(formatNumber(totalQty))}</span>
+          </div>
+
+          <div class="order-sheet-meta">
+            <div class="order-sheet-meta-side">
+              <p><strong>&#1575;&#1604;&#1605;&#1606;&#1583;&#1608;&#1576;:</strong> ${escapeHtml(order.rep || "--")}</p>
+              <p><strong>&#1575;&#1604;&#1578;&#1575;&#1585;&#1610;&#1582;:</strong> ${escapeHtml(formatDay(createdAt))}</p>
+              <p><strong>&#1575;&#1604;&#1608;&#1602;&#1578;:</strong> ${escapeHtml(formatTime(createdAt))}</p>
+            </div>
+            <div class="order-sheet-meta-side">
+              <p><strong>&#1575;&#1604;&#1593;&#1605;&#1610;&#1604;:</strong> ${escapeHtml(order.customer_name || "--")}</p>
+              <p><strong>&#1603;&#1608;&#1583; &#1575;&#1604;&#1593;&#1605;&#1610;&#1604;:</strong> ${escapeHtml(order.customer_code || "--")}</p>
+              <p><strong>&#1593;&#1583;&#1583; &#1575;&#1604;&#1576;&#1606;&#1608;&#1583;:</strong> ${escapeHtml(String(lines.length))}</p>
+            </div>
+          </div>
+
+          <div class="order-sheet-address">
+            <p><strong>&#1575;&#1604;&#1593;&#1606;&#1608;&#1575;&#1606;:</strong> ${escapeHtml(order.arabic_address || order.address || "No address")}</p>
+            <div class="order-sheet-map-row">
+              <p><strong>&#1575;&#1604;&#1605;&#1608;&#1602;&#1593;:</strong> ${
+                mapUrl
+                  ? `<a class="map-link map-link-solid" href="${escapeHtml(mapUrl)}" target="_blank" rel="noreferrer">&#1593;&#1585;&#1590; &#1593;&#1604;&#1609; &#1575;&#1604;&#1582;&#1585;&#1610;&#1591;&#1577;</a>`
+                  : `<span class="muted">&#1604;&#1575; &#1610;&#1608;&#1580;&#1583; &#1585;&#1575;&#1576;&#1591; &#1582;&#1585;&#1610;&#1591;&#1577;</span>`
+              }</p>
+              <p><strong>&#1573;&#1580;&#1605;&#1575;&#1604;&#1610; &#1575;&#1604;&#1603;&#1605;&#1610;&#1577;:</strong> ${escapeHtml(formatNumber(totalQty))}</p>
+            </div>
           </div>
         </section>
-        <div class="detail-cards">
-          <article class="detail-card">
-            <h4>معلومات العميل</h4>
-            <p class="muted">${escapeHtml(order.customer_code || "")}</p>
-            <strong>${escapeHtml(order.customer_name || "")}</strong>
-          </article>
-          <article class="detail-card">
-            <h4>الوقت والحالة</h4>
-            <p class="muted">تاريخ الإنشاء</p>
-            <strong>${escapeHtml(formatDate(order.created_at))}</strong>
-          </article>
-        </div>
-      </div>
 
-      <section class="detail-info-grid">
-        <article class="detail-info-item">
-          <span>المندوب</span>
-          <strong>${escapeHtml(order.rep || "--")}</strong>
-        </article>
-        <article class="detail-info-item">
-          <span>التصنيف</span>
-          <strong>${escapeHtml(order.category || "--")}</strong>
-        </article>
-        <article class="detail-info-item">
-          <span>القطاع</span>
-          <strong>${escapeHtml(order.sector || "--")}</strong>
-        </article>
-        <article class="detail-info-item">
-          <span>المنطقة</span>
-          <strong>${escapeHtml(order.area || "--")}</strong>
-        </article>
-      </section>
-
-      <section class="detail-card">
-        <h4>العنوان والموقع</h4>
-        <div class="detail-map-box">
-          <p><strong>العنوان المسجل:</strong> ${escapeHtml(order.arabic_address || order.address || "لا يوجد عنوان")}</p>
-          <p><strong>الإحداثيات:</strong> ${escapeHtml(
-            order.lat && order.lng ? `${order.lat}, ${order.lng}` : "غير متوفر"
-          )}</p>
-          ${
-            safeHref(order.map_url)
-              ? `<a class="map-link" href="${escapeHtml(safeHref(order.map_url))}" target="_blank" rel="noreferrer">عرض على الخريطة</a>`
-              : `<span class="muted">لا يوجد رابط خريطة</span>`
-          }
-        </div>
-      </section>
-
-      <section class="detail-card">
-        <h4>الأصناف المطلوبة</h4>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>كود الصنف</th>
-                <th>اسم الصنف</th>
-                <th>الموديل</th>
-                <th>الوحدة</th>
-                <th>الكمية</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${
-                lines.length
-                  ? lines
-                      .map(
-                        (line) => `
-                          <tr>
-                            <td>${escapeHtml(line.item_code || "")}</td>
-                            <td>${escapeHtml(line.item_name || "")}</td>
-                            <td>${escapeHtml(line.model || "--")}</td>
-                            <td>${escapeHtml(line.unit || "--")}</td>
-                            <td>${escapeHtml(formatNumber(line.qty))}</td>
-                          </tr>
-                        `
-                      )
-                      .join("")
-                  : `<tr><td colspan="5" class="empty-state">لا توجد بنود</td></tr>`
-              }
-            </tbody>
-          </table>
-        </div>
+        <section class="order-sheet-items">
+          <div class="order-sheet-items-head">
+            <h3>&#1575;&#1604;&#1571;&#1589;&#1606;&#1575;&#1601; &#1575;&#1604;&#1605;&#1591;&#1604;&#1608;&#1576;&#1577;</h3>
+          </div>
+          <div class="table-wrap order-sheet-table-wrap">
+            <table class="order-sheet-table">
+              <thead>
+                <tr>
+                  <th>&#1603;&#1608;&#1583; &#1575;&#1604;&#1589;&#1606;&#1601;</th>
+                  <th>&#1575;&#1604;&#1605;&#1608;&#1583;&#1610;&#1604;</th>
+                  <th>&#1575;&#1587;&#1605; &#1575;&#1604;&#1589;&#1606;&#1601;</th>
+                  <th>&#1575;&#1604;&#1604;&#1608;&#1606;</th>
+                  <th>&#1575;&#1604;&#1608;&#1581;&#1583;&#1577;</th>
+                  <th>S</th>
+                  <th>M</th>
+                  <th>L</th>
+                  <th>XL</th>
+                  <th>2XL</th>
+                  <th>3XL</th>
+                  <th>4XL</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  lines.length
+                    ? lines
+                        .map(
+                          (line) => `
+                            <tr>
+                              <td>${escapeHtml(line.item_code || "")}</td>
+                              <td>${escapeHtml(line.model || "--")}</td>
+                              <td>${escapeHtml(line.item_name || "")}</td>
+                              <td>${escapeHtml(line.color || "--")}</td>
+                              <td>${escapeHtml(line.unit || "--")}</td>
+                              <td>${escapeHtml(formatNumber(line.size_s || 0))}</td>
+                              <td>${escapeHtml(formatNumber(line.size_m || 0))}</td>
+                              <td>${escapeHtml(formatNumber(line.size_l || 0))}</td>
+                              <td>${escapeHtml(formatNumber(line.size_xl || 0))}</td>
+                              <td>${escapeHtml(formatNumber(line.size_2xl || 0))}</td>
+                              <td>${escapeHtml(formatNumber(line.size_3xl || 0))}</td>
+                              <td>${escapeHtml(formatNumber(line.size_4xl || 0))}</td>
+                            </tr>
+                          `
+                        )
+                        .join("")
+                    : `<tr><td colspan="12" class="empty-state">&#1604;&#1575; &#1578;&#1608;&#1580;&#1583; &#1576;&#1606;&#1608;&#1583;</td></tr>`
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
       </section>
     `;
+
+    const backButton = ui.orderDetailsContent.querySelector(".order-sheet-back");
+    if (backButton) {
+      backButton.addEventListener("click", function () {
+        ui.detailsDialog.close();
+      });
+    }
   }
 
   function renderCustomersTable() {
+    const pageSize = 10;
     const needle = state.customerSearch.toLowerCase();
-    const rows = state.customers.filter((row) => {
+    const filteredRows = state.customers.filter((row) => {
       if (!needle) return true;
-      return [row.code, row.name, row.rep, row.area].some((value) => String(value || "").toLowerCase().includes(needle));
+      return [row.code, row.name, row.rep, row.sector, row.area, row.mobile, row.customer_type].some((value) =>
+        String(value || "").toLowerCase().includes(needle)
+      );
     });
 
-    if (!rows.length) {
-      ui.customersTable.innerHTML = `<tr><td colspan="6" class="empty-state">لا توجد نتائج</td></tr>`;
+    if (!filteredRows.length) {
+      ui.customersTable.innerHTML = '<tr><td colspan="9" class="empty-state">No results</td></tr>';
+      renderTablePager(ui.customersPager, 1, 1, () => {});
       return;
     }
+
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    state.customersPage = Math.min(Math.max(state.customersPage, 1), totalPages);
+    const pageStart = (state.customersPage - 1) * pageSize;
+    const rows = filteredRows.slice(pageStart, pageStart + pageSize);
 
     ui.customersTable.innerHTML = rows
       .map(
@@ -1298,11 +1526,14 @@
             <td>${escapeHtml(row.code || "")}</td>
             <td>${escapeHtml(row.name || "")}</td>
             <td>${escapeHtml(row.rep || "--")}</td>
+            <td>${escapeHtml(row.sector || "--")}</td>
             <td>${escapeHtml(row.area || "--")}</td>
+            <td>${escapeHtml(row.mobile || row.phone || "--")}</td>
+            <td>${escapeHtml(row.customer_type || "--")}</td>
             <td><span class="${row.is_active === false ? "pill pill-cancelled" : "pill pill-confirmed"}">${escapeHtml(
-              row.is_active === false ? "غير نشط" : "نشط"
+              row.is_active === false ? "Inactive" : "Active"
             )}</span></td>
-            <td><button class="btn btn-soft customer-edit" data-code="${escapeHtml(row.code || "")}" type="button">تعديل</button></td>
+            <td><button class="btn btn-soft customer-edit" data-code="${escapeHtml(row.code || "")}" type="button">Edit</button></td>
           </tr>
         `
       )
@@ -1312,6 +1543,11 @@
       button.addEventListener("click", function () {
         fillCustomerEditor(button.dataset.code);
       });
+    });
+
+    renderTablePager(ui.customersPager, state.customersPage, totalPages, (page) => {
+      state.customersPage = page;
+      renderCustomersTable();
     });
   }
 
@@ -1323,19 +1559,59 @@
 
     state.customerEditorCode = customer.code;
     ui.customerFormTitle.textContent = `تعديل العميل: ${customer.code}`;
+    ui.customerBranchCode.value = customer.branch_code || "";
     ui.customerCode.value = customer.code || "";
     ui.customerCode.disabled = true;
     ui.customerName.value = customer.name || "";
     ui.customerRep.value = customer.rep || "";
+    ui.customerRepCode.value = customer.rep_code || "";
     ui.customerCategory.value = customer.category || "";
+    ui.customerCategory1.value = customer.category1 || "";
+    ui.customerCategory2.value = customer.category2 || "";
+    ui.customerCategory3.value = customer.category3 || "";
+    ui.customerCategory4.value = customer.category4 || "";
+    ui.customerCategory5.value = customer.category5 || "";
     ui.customerSector.value = customer.sector || "";
+    ui.customerSectorCode.value = customer.sector_code || "";
     ui.customerArea.value = customer.area || "";
+    ui.customerAreaCode.value = customer.area_code || "";
     ui.customerAddress.value = customer.address || "";
     ui.customerPhone.value = customer.phone || "";
+    ui.customerMobile.value = customer.mobile || "";
+    ui.customerFax.value = customer.fax || "";
     ui.customerEmail.value = customer.email || "";
+    ui.customerType.value = customer.customer_type || "";
+    ui.customerDiscount.value = customer.discount || "";
+    ui.customerCreditLimit.value = customer.credit_limit || "";
+    ui.customerReceivablesCreditLimit.value = customer.receivables_credit_limit || "";
+    ui.customerBouncedCount.value = customer.bounced_receivables_count || "";
+    ui.customerCreditLimitExceeded.value = customer.credit_limit_exceeded || "";
+    ui.customerMaxOpenInvoices.value = customer.max_open_invoices || "";
+    ui.customerTermsCredit.value = customer.terms_credit || "";
+    ui.customerReceivablesTerms.value = customer.receivables_terms || "";
+    ui.customerParentCode.value = customer.parent_customer_code || "";
     ui.customerActive.value = customer.is_active === false ? "false" : "true";
     ui.customerSubmit.textContent = "حفظ التعديل";
     setPage("customers");
+  }
+
+  function renderTablePager(host, currentPage, totalPages, onChange) {
+    if (!host) return;
+    if (totalPages <= 1) {
+      host.innerHTML = "";
+      return;
+    }
+
+    host.innerHTML = `
+      <button class="btn btn-soft pager-prev" type="button" ${currentPage <= 1 ? "disabled" : ""}>السابق</button>
+      <span class="muted">صفحة ${escapeHtml(String(currentPage))} من ${escapeHtml(String(totalPages))}</span>
+      <button class="btn btn-soft pager-next" type="button" ${currentPage >= totalPages ? "disabled" : ""}>التالي</button>
+    `;
+
+    const prev = host.querySelector(".pager-prev");
+    const next = host.querySelector(".pager-next");
+    if (prev) prev.addEventListener("click", () => onChange(currentPage - 1));
+    if (next) next.addEventListener("click", () => onChange(currentPage + 1));
   }
 
   function resetCustomerEditor() {
@@ -1350,15 +1626,36 @@
   async function onSubmitCustomer(event) {
     event.preventDefault();
     const payload = {
+      branchCode: ui.customerBranchCode.value.trim(),
       code: ui.customerCode.value.trim(),
       name: ui.customerName.value.trim(),
       rep: ui.customerRep.value.trim(),
+      repCode: ui.customerRepCode.value.trim(),
       category: ui.customerCategory.value.trim(),
+      category1: ui.customerCategory1.value.trim(),
+      category2: ui.customerCategory2.value.trim(),
+      category3: ui.customerCategory3.value.trim(),
+      category4: ui.customerCategory4.value.trim(),
+      category5: ui.customerCategory5.value.trim(),
       sector: ui.customerSector.value.trim(),
+      sectorCode: ui.customerSectorCode.value.trim(),
       area: ui.customerArea.value.trim(),
+      areaCode: ui.customerAreaCode.value.trim(),
       address: ui.customerAddress.value.trim(),
       phone: ui.customerPhone.value.trim(),
+      mobile: ui.customerMobile.value.trim(),
+      fax: ui.customerFax.value.trim(),
       email: ui.customerEmail.value.trim(),
+      customerType: ui.customerType.value.trim(),
+      discount: ui.customerDiscount.value.trim(),
+      creditLimit: ui.customerCreditLimit.value.trim(),
+      receivablesCreditLimit: ui.customerReceivablesCreditLimit.value.trim(),
+      bouncedReceivablesCount: ui.customerBouncedCount.value.trim(),
+      creditLimitExceeded: ui.customerCreditLimitExceeded.value.trim(),
+      maxOpenInvoices: ui.customerMaxOpenInvoices.value.trim(),
+      termsCredit: ui.customerTermsCredit.value.trim(),
+      receivablesTerms: ui.customerReceivablesTerms.value.trim(),
+      parentCustomerCode: ui.customerParentCode.value.trim(),
       isActive: ui.customerActive.value === "true"
     };
 
@@ -1388,17 +1685,65 @@
     }
   }
 
+  function formatVariantsForTextarea(variants) {
+    return (Array.isArray(variants) ? variants : [])
+      .map((variant) => [variant.color || "", variant.size || "", variant.unit || ""].join(" | "))
+      .join("\n");
+  }
+
+  function parseVariantsTextarea(text, fallbackUnit) {
+    return String(text || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split("|").map((part) => part.trim());
+        return normalizeVariant({
+          color: parts[0] || "",
+          size: parts[1] || "",
+          unit: parts[2] || fallbackUnit || ""
+        });
+      })
+      .filter((variant) => variant.color || variant.size || variant.unit);
+  }
+
+  function renderItemVariantsSummary(variants, unit) {
+    if (!Array.isArray(variants) || !variants.length) {
+      return escapeHtml(unit || "--");
+    }
+    const preview = variants
+      .slice(0, 3)
+      .map((variant) => {
+        const pieces = [variant.color, variant.size, variant.unit].filter(Boolean);
+        return escapeHtml(pieces.join(" / ") || "--");
+      })
+      .join("<br />");
+    return variants.length > 3 ? preview + "<br />..." : preview;
+  }
+
   function renderItemsTable() {
+    const pageSize = 10;
     const needle = state.itemSearch.toLowerCase();
-    const rows = state.items.filter((row) => {
+    const filteredRows = state.items.filter((row) => {
       if (!needle) return true;
-      return [row.code, row.name, row.model].some((value) => String(value || "").toLowerCase().includes(needle));
+      const variantText = Array.isArray(row.variants)
+        ? row.variants.map((variant) => [variant.color, variant.size, variant.unit].filter(Boolean).join(" ")).join(" ")
+        : "";
+      return [row.code, row.name, row.model, row.unit, variantText].some((value) =>
+        String(value || "").toLowerCase().includes(needle)
+      );
     });
 
-    if (!rows.length) {
-      ui.itemsTable.innerHTML = `<tr><td colspan="6" class="empty-state">لا توجد نتائج</td></tr>`;
+    if (!filteredRows.length) {
+      ui.itemsTable.innerHTML = '<tr><td colspan="8" class="empty-state">No results</td></tr>';
+      renderTablePager(ui.itemsPager, 1, 1, () => {});
       return;
     }
+
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    state.itemsPage = Math.min(Math.max(state.itemsPage, 1), totalPages);
+    const pageStart = (state.itemsPage - 1) * pageSize;
+    const rows = filteredRows.slice(pageStart, pageStart + pageSize);
 
     ui.itemsTable.innerHTML = rows
       .map(
@@ -1407,11 +1752,13 @@
             <td>${escapeHtml(row.code || "")}</td>
             <td>${escapeHtml(row.name || "")}</td>
             <td>${escapeHtml(row.model || "--")}</td>
+            <td>${escapeHtml(row.unit || "--")}</td>
+            <td>${renderItemVariantsSummary(row.variants, row.unit)}</td>
             <td>${escapeHtml(formatCurrency(row.price || 0))}</td>
             <td><span class="${row.is_active === false ? "pill pill-cancelled" : "pill pill-confirmed"}">${escapeHtml(
-              row.is_active === false ? "غير نشط" : "نشط"
+              row.is_active === false ? "Inactive" : "Active"
             )}</span></td>
-            <td><button class="btn btn-soft item-edit" data-code="${escapeHtml(row.code || "")}" type="button">تعديل</button></td>
+            <td><button class="btn btn-soft item-edit" data-code="${escapeHtml(row.code || "")}" type="button">Edit</button></td>
           </tr>
         `
       )
@@ -1422,6 +1769,11 @@
         fillItemEditor(button.dataset.code);
       });
     });
+
+    renderTablePager(ui.itemsPager, state.itemsPage, totalPages, (page) => {
+      state.itemsPage = page;
+      renderItemsTable();
+    });
   }
 
   function fillItemEditor(code) {
@@ -1429,7 +1781,7 @@
     if (!item) return;
 
     state.itemEditorCode = item.code;
-    ui.itemFormTitle.textContent = `تعديل المنتج: ${item.code}`;
+    ui.itemFormTitle.textContent = `Edit Product: ${item.code}`;
     ui.itemCode.value = item.code || "";
     ui.itemCode.disabled = true;
     ui.itemName.value = item.name || "";
@@ -1437,18 +1789,20 @@
     ui.itemUnit.value = item.unit || "";
     ui.itemPrice.value = item.price || 0;
     ui.itemDescription.value = item.description || "";
+    ui.itemVariants.value = formatVariantsForTextarea(item.variants);
     ui.itemActive.value = item.is_active === false ? "false" : "true";
-    ui.itemSubmit.textContent = "حفظ التعديل";
+    ui.itemSubmit.textContent = "Save Changes";
     setPage("items");
   }
 
   function resetItemEditor() {
     state.itemEditorCode = "";
     ui.itemForm.reset();
-    ui.itemFormTitle.textContent = "منتج جديد";
+    ui.itemFormTitle.textContent = "New Product";
     ui.itemCode.disabled = false;
+    ui.itemVariants.value = "";
     ui.itemActive.value = "true";
-    ui.itemSubmit.textContent = "حفظ المنتج";
+    ui.itemSubmit.textContent = "Save Product";
   }
 
   async function onSubmitItem(event) {
@@ -1460,36 +1814,38 @@
       unit: ui.itemUnit.value.trim(),
       description: ui.itemDescription.value.trim(),
       price: Number(ui.itemPrice.value || 0),
+      variants: parseVariantsTextarea(ui.itemVariants.value, ui.itemUnit.value.trim()),
       isActive: ui.itemActive.value === "true"
     };
 
     if (!payload.code || !payload.name) {
-      notify("كود المنتج واسم المنتج مطلوبان.", "error");
+      notify("Product code and name are required.", "error");
       return;
     }
 
-    setBusy(ui.itemSubmit, true, "جارٍ الحفظ...");
+    setBusy(ui.itemSubmit, true, "Saving...");
     try {
       if (state.itemEditorCode) {
         await apiRequest("/api/items/" + encodeURIComponent(state.itemEditorCode), {
           method: "PUT",
           body: payload
         });
-        notify("تم تحديث المنتج.", "success");
+        notify("Product updated.", "success");
       } else {
         await apiRequest("/api/items", { method: "POST", body: payload });
-        notify("تمت إضافة المنتج.", "success");
+        notify("Product added.", "success");
       }
       resetItemEditor();
       await refreshLookupsAndLists();
     } catch (error) {
-      notify(error.message || "تعذر حفظ المنتج.", "error");
+      notify(error.message || "Could not save product.", "error");
     } finally {
-      setBusy(ui.itemSubmit, false, state.itemEditorCode ? "حفظ التعديل" : "حفظ المنتج");
+      setBusy(ui.itemSubmit, false, state.itemEditorCode ? "Save Changes" : "Save Product");
     }
   }
 
   function renderUsersTable() {
+
     if (!ui.usersTable) {
       return;
     }
@@ -2751,12 +3107,33 @@ function renderScoreList(rows, suffix, formatterFn) {
       code: entry.code || "",
       name: entry.name || "",
       rep: entry.rep || "",
+      rep_code: entry.rep_code || "",
       category: entry.category || "",
+      category1: entry.category1 || "",
+      category2: entry.category2 || "",
+      category3: entry.category3 || "",
+      category4: entry.category4 || "",
+      category5: entry.category5 || "",
       sector: entry.sector || "",
+      sector_code: entry.sector_code || "",
       area: entry.area || "",
+      area_code: entry.area_code || "",
+      branch_code: entry.branch_code || "",
       address: entry.address || "",
       phone: entry.phone || "",
+      mobile: entry.mobile || "",
+      fax: entry.fax || "",
       email: entry.email || "",
+      customer_type: entry.customer_type || "",
+      discount: entry.discount || "",
+      credit_limit: entry.credit_limit || "",
+      receivables_credit_limit: entry.receivables_credit_limit || "",
+      bounced_receivables_count: entry.bounced_receivables_count || "",
+      credit_limit_exceeded: entry.credit_limit_exceeded || "",
+      max_open_invoices: entry.max_open_invoices || "",
+      terms_credit: entry.terms_credit || "",
+      receivables_terms: entry.receivables_terms || "",
+      parent_customer_code: entry.parent_customer_code || "",
       is_active: entry.is_active !== false
     };
   }
@@ -2769,7 +3146,16 @@ function renderScoreList(rows, suffix, formatterFn) {
       unit: entry.unit || "",
       description: entry.description || "",
       price: Number(entry.price || 0),
+      variants: Array.isArray(entry.variants) ? entry.variants.map(normalizeVariant) : [],
       is_active: entry.is_active !== false
+    };
+  }
+
+  function normalizeVariant(entry) {
+    return {
+      color: entry.color || "",
+      size: entry.size || "",
+      unit: entry.unit || ""
     };
   }
 

@@ -234,7 +234,9 @@ function buildOrderCode() {
 
 async function getOrderLines(orderId) {
   return query(
-    `select id, item_code, item_name, unit, model, qty, created_at
+    `select id, item_code, item_name, unit, model, color, qty,
+            size_s, size_m, size_l, size_xl, size_2xl, size_3xl, size_4xl,
+            created_at
      from order_lines where order_id = $1 order by created_at asc`,
     [orderId]
   );
@@ -454,7 +456,8 @@ app.post("/api/auth/login", rateLimit(10, 15 * 60_000), async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ message: "البريد الإلكتروني وكلمة المرور مطلوبان." });
     }
-    const rows = await query(
+    await client.query("begin");
+    const rows = await client.query(
       `select id, email, full_name
        from app_users
        where email = $1
@@ -505,7 +508,8 @@ app.post("/api/users", authRequired, adminRequired, async (req, res) => {
       return res.status(400).json({ message: "ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙŠØ¬Ø¨ Ø£Ù† ØªÙƒÙˆÙ† 4 Ø£Ø­Ø±Ù Ø£Ùˆ Ø£ÙƒØ«Ø±." });
     }
 
-    const rows = await query(
+    await client.query("begin");
+    const rows = await client.query(
       `insert into app_users (email, full_name, password_hash, is_active)
        values ($1, $2, crypt($3, gen_salt('bf')), $4)
        returning id, email, full_name, is_active, created_at`,
@@ -553,7 +557,7 @@ app.put("/api/users/:id", authRequired, adminRequired, async (req, res) => {
       return res.status(400).json({ message: "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ø­Ø§Ù„ÙŠ." });
     }
 
-    const rows = await query(
+    const rows = await client.query(
       `update app_users
        set email = $2,
            full_name = $3,
@@ -579,12 +583,31 @@ app.get("/api/lookups", authRequired, async (_req, res) => {
   try {
     const [customers, items] = await Promise.all([
       query(
-        `select code, name, rep, category, sector, area, address, phone, email, is_active
+        `select code, name, rep, category, sector, area, address, phone, email, is_active,
+                branch_code, category1, category2, category3, category4, category5,
+                rep_code, sector_code, area_code, fax, mobile, customer_type, discount,
+                credit_limit, receivables_credit_limit, bounced_receivables_count,
+                credit_limit_exceeded, max_open_invoices, terms_credit, receivables_terms,
+                parent_customer_code
          from customers order by name asc`
       ),
       query(
-        `select code, name, model, unit, description, price, is_active
-         from items order by name asc`
+        `select i.code, i.name, i.model, i.unit, i.description, i.price, i.is_active,
+                coalesce(
+                  json_agg(
+                    json_build_object(
+                      'color', v.color,
+                      'size', v.size,
+                      'unit', v.unit
+                    )
+                    order by v.color, v.size, v.unit
+                  ) filter (where v.id is not null),
+                  '[]'::json
+                ) as variants
+         from items i
+         left join item_variants v on v.item_code = i.code
+         group by i.code, i.name, i.model, i.unit, i.description, i.price, i.is_active
+         order by i.name asc`
       )
     ]);
     res.json({ customers, items });
@@ -596,7 +619,12 @@ app.get("/api/lookups", authRequired, async (_req, res) => {
 app.get("/api/customers", authRequired, async (_req, res) => {
   try {
     const customers = await query(
-      `select id, code, name, rep, category, sector, area, address, phone, email, is_active, created_at
+      `select id, code, name, rep, category, sector, area, address, phone, email, is_active, created_at,
+              branch_code, category1, category2, category3, category4, category5,
+              rep_code, sector_code, area_code, fax, mobile, customer_type, discount,
+              credit_limit, receivables_credit_limit, bounced_receivables_count,
+              credit_limit_exceeded, max_open_invoices, terms_credit, receivables_terms,
+              parent_customer_code
        from customers order by name asc`
     );
     res.json({ customers });
@@ -609,11 +637,35 @@ app.post("/api/customers", authRequired, async (req, res) => {
   try {
     const p = req.body || {};
     if (!p.code || !p.name) return res.status(400).json({ message: "كود العميل والاسم مطلوبان." });
-    const rows = await query(
-      `insert into customers (code, name, rep, category, sector, area, address, phone, email, is_active)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-       returning id, code, name, rep, category, sector, area, address, phone, email, is_active, created_at`,
-      [p.code, p.name, p.rep||"", p.category||"", p.sector||"", p.area||"", p.address||"", p.phone||"", p.email||"", boolValue(p.isActive)]
+    const rows = await client.query(
+      `insert into customers (
+         code, name, rep, category, sector, area, address, phone, email, is_active,
+         branch_code, category1, category2, category3, category4, category5,
+         rep_code, sector_code, area_code, fax, mobile, customer_type, discount,
+         credit_limit, receivables_credit_limit, bounced_receivables_count,
+         credit_limit_exceeded, max_open_invoices, terms_credit, receivables_terms,
+         parent_customer_code
+       )
+       values (
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+         $11,$12,$13,$14,$15,$16,
+         $17,$18,$19,$20,$21,$22,$23,
+         $24,$25,$26,$27,$28,$29,$30,
+         $31
+       )
+       returning id, code, name, rep, category, sector, area, address, phone, email, is_active, created_at,
+                 branch_code, category1, category2, category3, category4, category5,
+                 rep_code, sector_code, area_code, fax, mobile, customer_type, discount,
+                 credit_limit, receivables_credit_limit, bounced_receivables_count,
+                 credit_limit_exceeded, max_open_invoices, terms_credit, receivables_terms,
+                 parent_customer_code`,
+      [
+        p.code, p.name, p.rep||"", p.category||"", p.sector||"", p.area||"", p.address||"", p.phone||"", p.email||"", boolValue(p.isActive),
+        p.branchCode||"", p.category1||"", p.category2||"", p.category3||"", p.category4||"", p.category5||"",
+        p.repCode||"", p.sectorCode||"", p.areaCode||"", p.fax||"", p.mobile||"", p.customerType||"", p.discount||"",
+        p.creditLimit||"", p.receivablesCreditLimit||"", p.bouncedReceivablesCount||"", p.creditLimitExceeded||"",
+        p.maxOpenInvoices||"", p.termsCredit||"", p.receivablesTerms||"", p.parentCustomerCode||""
+      ]
     );
     clearAnalyticsCache();
     res.json({ customer: rows[0] });
@@ -627,10 +679,26 @@ app.put("/api/customers/:code", authRequired, async (req, res) => {
     const p = req.body || {};
     if (!p.name) return res.status(400).json({ message: "اسم العميل مطلوب." });
     const rows = await query(
-      `update customers set name=$2, rep=$3, category=$4, sector=$5, area=$6, address=$7, phone=$8, email=$9, is_active=$10
+      `update customers set
+         name=$2, rep=$3, category=$4, sector=$5, area=$6, address=$7, phone=$8, email=$9, is_active=$10,
+         branch_code=$11, category1=$12, category2=$13, category3=$14, category4=$15, category5=$16,
+         rep_code=$17, sector_code=$18, area_code=$19, fax=$20, mobile=$21, customer_type=$22, discount=$23,
+         credit_limit=$24, receivables_credit_limit=$25, bounced_receivables_count=$26, credit_limit_exceeded=$27,
+         max_open_invoices=$28, terms_credit=$29, receivables_terms=$30, parent_customer_code=$31
        where code=$1
-       returning id, code, name, rep, category, sector, area, address, phone, email, is_active, created_at`,
-      [req.params.code, p.name, p.rep||"", p.category||"", p.sector||"", p.area||"", p.address||"", p.phone||"", p.email||"", boolValue(p.isActive)]
+       returning id, code, name, rep, category, sector, area, address, phone, email, is_active, created_at,
+                 branch_code, category1, category2, category3, category4, category5,
+                 rep_code, sector_code, area_code, fax, mobile, customer_type, discount,
+                 credit_limit, receivables_credit_limit, bounced_receivables_count,
+                 credit_limit_exceeded, max_open_invoices, terms_credit, receivables_terms,
+                 parent_customer_code`,
+      [
+        req.params.code, p.name, p.rep||"", p.category||"", p.sector||"", p.area||"", p.address||"", p.phone||"", p.email||"", boolValue(p.isActive),
+        p.branchCode||"", p.category1||"", p.category2||"", p.category3||"", p.category4||"", p.category5||"",
+        p.repCode||"", p.sectorCode||"", p.areaCode||"", p.fax||"", p.mobile||"", p.customerType||"", p.discount||"",
+        p.creditLimit||"", p.receivablesCreditLimit||"", p.bouncedReceivablesCount||"", p.creditLimitExceeded||"",
+        p.maxOpenInvoices||"", p.termsCredit||"", p.receivablesTerms||"", p.parentCustomerCode||""
+      ]
     );
     if (!rows.length) return res.status(404).json({ message: "العميل غير موجود." });
     clearAnalyticsCache();
@@ -643,8 +711,22 @@ app.put("/api/customers/:code", authRequired, async (req, res) => {
 app.get("/api/items", authRequired, async (_req, res) => {
   try {
     const items = await query(
-      `select id, code, name, model, unit, description, price, is_active, created_at
-       from items order by name asc`
+      `select i.id, i.code, i.name, i.model, i.unit, i.description, i.price, i.is_active, i.created_at,
+              coalesce(
+                json_agg(
+                  json_build_object(
+                    'color', v.color,
+                    'size', v.size,
+                    'unit', v.unit
+                  )
+                  order by v.color, v.size, v.unit
+                ) filter (where v.id is not null),
+                '[]'::json
+              ) as variants
+       from items i
+       left join item_variants v on v.item_code = i.code
+       group by i.id, i.code, i.name, i.model, i.unit, i.description, i.price, i.is_active, i.created_at
+       order by i.name asc`
     );
     res.json({ items });
   } catch (error) {
@@ -653,37 +735,136 @@ app.get("/api/items", authRequired, async (_req, res) => {
 });
 
 app.post("/api/items", authRequired, async (req, res) => {
+  const client = await pool.connect();
   try {
     const p = req.body || {};
+    const variants = Array.isArray(p.variants) ? p.variants : [];
     if (!p.code || !p.name) return res.status(400).json({ message: "كود المنتج والاسم مطلوبان." });
-    const rows = await query(
+    await client.query("begin");
+    const rows = await client.query(
       `insert into items (code, name, model, unit, description, price, is_active)
        values ($1,$2,$3,$4,$5,$6,$7)
        returning id, code, name, model, unit, description, price, is_active, created_at`,
       [p.code, p.name, p.model||"", p.unit||"", p.description||"", Number(p.price||0), boolValue(p.isActive)]
     );
+    for (const variant of variants) {
+      await client.query(
+        `insert into item_variants (item_code, item_name, model, color, size, unit)
+         values ($1,$2,$3,$4,$5,$6)`,
+        [p.code, p.name, p.model||"", variant.color||"", variant.size||"", variant.unit||p.unit||""]
+      );
+    }
+    await client.query("commit");
     clearAnalyticsCache();
-    res.json({ item: rows[0] });
+    res.json({ item: rows.rows[0] });
   } catch (error) {
+    try { await client.query("rollback"); } catch {}
     serverError(res, error);
+  } finally {
+    client.release();
   }
 });
 
 app.put("/api/items/:code", authRequired, async (req, res) => {
+  const client = await pool.connect();
   try {
     const p = req.body || {};
-    if (!p.name) return res.status(400).json({ message: "اسم المنتج مطلوب." });
-    const rows = await query(
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    if (!p.name) return res.status(400).json({ message: "Product name is required." });
+    await client.query("begin");
+    const rows = await client.query(
       `update items set name=$2, model=$3, unit=$4, description=$5, price=$6, is_active=$7
        where code=$1
        returning id, code, name, model, unit, description, price, is_active, created_at`,
       [req.params.code, p.name, p.model||"", p.unit||"", p.description||"", Number(p.price||0), boolValue(p.isActive)]
     );
-    if (!rows.length) return res.status(404).json({ message: "المنتج غير موجود." });
+    if (!rows.rows.length) {
+      await client.query("rollback");
+      return res.status(404).json({ message: "Product not found." });
+    }
+    await client.query(`delete from item_variants where item_code = $1`, [req.params.code]);
+    for (const variant of variants) {
+      await client.query(
+        `insert into item_variants (item_code, item_name, model, color, size, unit)
+         values ($1,$2,$3,$4,$5,$6)`,
+        [req.params.code, p.name, p.model||"", variant.color||"", variant.size||"", variant.unit||p.unit||""]
+      );
+    }
+    await client.query("commit");
     clearAnalyticsCache();
-    res.json({ item: rows[0] });
+    res.json({ item: rows.rows[0] });
   } catch (error) {
+    try { await client.query("rollback"); } catch {}
     serverError(res, error);
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/api/items-admin", authRequired, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const p = req.body || {};
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    if (!p.code || !p.name) return res.status(400).json({ message: "ÙƒÙˆØ¯ Ø§Ù„Ù…Ù†ØªØ¬ ÙˆØ§Ù„Ø§Ø³Ù… Ù…Ø·Ù„ÙˆØ¨Ø§Ù†." });
+    await client.query("begin");
+    const rows = await client.query(
+      `insert into items (code, name, model, unit, description, price, is_active)
+       values ($1,$2,$3,$4,$5,$6,$7)
+       returning id, code, name, model, unit, description, price, is_active, created_at`,
+      [p.code, p.name, p.model||"", p.unit||"", p.description||"", Number(p.price||0), boolValue(p.isActive)]
+    );
+    for (const variant of variants) {
+      await client.query(
+        `insert into item_variants (item_code, item_name, model, color, size, unit)
+         values ($1,$2,$3,$4,$5,$6)`,
+        [p.code, p.name, p.model||"", variant.color||"", variant.size||"", variant.unit||p.unit||""]
+      );
+    }
+    await client.query("commit");
+    clearAnalyticsCache();
+    res.json({ item: rows.rows[0] });
+  } catch (error) {
+    try { await client.query("rollback"); } catch {}
+    serverError(res, error);
+  } finally {
+    client.release();
+  }
+});
+
+app.put("/api/items-admin/:code", authRequired, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const p = req.body || {};
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    if (!p.name) return res.status(400).json({ message: "Ø§Ø³Ù… Ø§Ù„Ù…Ù†ØªØ¬ Ù…Ø·Ù„ÙˆØ¨." });
+    await client.query("begin");
+    const rows = await client.query(
+      `update items set name=$2, model=$3, unit=$4, description=$5, price=$6, is_active=$7
+       where code=$1
+       returning id, code, name, model, unit, description, price, is_active, created_at`,
+      [req.params.code, p.name, p.model||"", p.unit||"", p.description||"", Number(p.price||0), boolValue(p.isActive)]
+    );
+    if (!rows.rows.length) {
+      await client.query("rollback");
+      return res.status(404).json({ message: "Ø§Ù„Ù…Ù†ØªØ¬ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯." });
+    }
+    await client.query(`delete from item_variants where item_code = $1`, [req.params.code]);
+    for (const variant of variants) {
+      await client.query(
+        `insert into item_variants (item_code, item_name, model, color, size, unit)
+         values ($1,$2,$3,$4,$5,$6)`,
+        [req.params.code, p.name, p.model||"", variant.color||"", variant.size||"", variant.unit||p.unit||""]
+      );
+    }
+    await client.query("commit");
+    clearAnalyticsCache();
+    res.json({ item: rows.rows[0] });
+  } catch (error) {
+    try { await client.query("rollback"); } catch {}
+    serverError(res, error);
+  } finally {
+    client.release();
   }
 });
 
@@ -751,7 +932,15 @@ app.post("/api/orders/line", authRequired, async (req, res) => {
     const p = req.body || {};
     const customer = p.customer || {};
     const item = p.item || {};
-    const qty = Number(p.qty || 0);
+    const color = String(p.color || "").trim();
+    const sizeS = Number(p.sizeS || 0);
+    const sizeM = Number(p.sizeM || 0);
+    const sizeL = Number(p.sizeL || 0);
+    const sizeXl = Number(p.sizeXl || 0);
+    const size2xl = Number(p.size2xl || 0);
+    const size3xl = Number(p.size3xl || 0);
+    const size4xl = Number(p.size4xl || 0);
+    const qty = sizeS + sizeM + sizeL + sizeXl + size2xl + size3xl + size4xl;
     if (!customer.code || !item.code || qty <= 0) {
       return res.status(400).json({ message: "بيانات البند غير مكتملة." });
     }
@@ -811,20 +1000,32 @@ app.post("/api/orders/line", authRequired, async (req, res) => {
     }
 
     const existingLine = await client.query(
-      `select id from order_lines where order_id = $1 and item_code = $2 limit 1`,
-      [orderId, item.code]
+      `select id from order_lines
+       where order_id = $1 and item_code = $2 and coalesce(color,'') = $3
+       limit 1`,
+      [orderId, item.code, color]
     );
 
     if (existingLine.rows.length) {
       await client.query(
-        `update order_lines set qty = qty + $1 where id = $2`,
-        [qty, existingLine.rows[0].id]
+        `update order_lines
+         set qty = qty + $1,
+             size_s = size_s + $2,
+             size_m = size_m + $3,
+             size_l = size_l + $4,
+             size_xl = size_xl + $5,
+             size_2xl = size_2xl + $6,
+             size_3xl = size_3xl + $7,
+             size_4xl = size_4xl + $8
+         where id = $9`,
+        [qty, sizeS, sizeM, sizeL, sizeXl, size2xl, size3xl, size4xl, existingLine.rows[0].id]
       );
     } else {
       await client.query(
-        `insert into order_lines (order_id, item_code, item_name, unit, model, qty)
-         values ($1,$2,$3,$4,$5,$6)`,
-        [orderId, item.code, item.name, item.unit||"", item.model||"", qty]
+        `insert into order_lines
+           (order_id, item_code, item_name, unit, model, color, qty, size_s, size_m, size_l, size_xl, size_2xl, size_3xl, size_4xl)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        [orderId, item.code, item.name, item.unit||"", item.model||"", color, qty, sizeS, sizeM, sizeL, sizeXl, size2xl, size3xl, size4xl]
       );
     }
 
@@ -1483,8 +1684,15 @@ async function ensureSchema() {
       id uuid primary key default gen_random_uuid(),
       order_id uuid not null references orders(id) on delete cascade,
       item_code text not null, item_name text not null,
-      unit text not null default '', model text not null default '',
+      unit text not null default '', model text not null default '', color text not null default '',
       qty numeric(14,2) not null default 0,
+      size_s numeric(14,2) not null default 0,
+      size_m numeric(14,2) not null default 0,
+      size_l numeric(14,2) not null default 0,
+      size_xl numeric(14,2) not null default 0,
+      size_2xl numeric(14,2) not null default 0,
+      size_3xl numeric(14,2) not null default 0,
+      size_4xl numeric(14,2) not null default 0,
       created_at timestamptz not null default now()
     );
     create table if not exists portal_settings (
@@ -1527,6 +1735,14 @@ async function ensureSchema() {
     alter table orders add column if not exists lat double precision;
     alter table orders add column if not exists lng double precision;
     alter table orders add column if not exists map_url text not null default '';
+    alter table order_lines add column if not exists color text not null default '';
+    alter table order_lines add column if not exists size_s numeric(14,2) not null default 0;
+    alter table order_lines add column if not exists size_m numeric(14,2) not null default 0;
+    alter table order_lines add column if not exists size_l numeric(14,2) not null default 0;
+    alter table order_lines add column if not exists size_xl numeric(14,2) not null default 0;
+    alter table order_lines add column if not exists size_2xl numeric(14,2) not null default 0;
+    alter table order_lines add column if not exists size_3xl numeric(14,2) not null default 0;
+    alter table order_lines add column if not exists size_4xl numeric(14,2) not null default 0;
   `);
 
   // create admin if not exists, then update password from env var if provided

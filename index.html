@@ -300,66 +300,81 @@
             </form>
           </section>
 
-          <section class="glass page-section hidden" data-page="orders-entry">
+                    <section class="glass page-section hidden" data-page="orders-entry">
             <div class="section-head">
-              <h2>تسجيل طلبية</h2>
-              <p>ابدأ بالعميل ثم التقط الموقع ثم أضف البنود، وبعدها أكّد الطلبية أو ألغها.</p>
+              <h2>&#1578;&#1587;&#1580;&#1610;&#1604; &#1591;&#1604;&#1576;&#1610;&#1577;</h2>
+              <p>&#1575;&#1576;&#1583;&#1571; &#1576;&#1575;&#1604;&#1593;&#1605;&#1610;&#1604; &#1579;&#1605; &#1575;&#1604;&#1578;&#1602;&#1591; &#1575;&#1604;&#1605;&#1608;&#1602;&#1593; &#1579;&#1605; &#1571;&#1590;&#1601; &#1575;&#1604;&#1576;&#1606;&#1608;&#1583;&#1548; &#1608;&#1576;&#1593;&#1583;&#1607;&#1575; &#1571;&#1603;&#1617;&#1583; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577; &#1571;&#1608; &#1571;&#1604;&#1594;&#1607;&#1575;.</p>
             </div>
 
             <div class="order-overview">
               <article class="overview-card accent-order">
-                <span>كود الطلبية</span>
-                <strong id="order-code-badge">لم يبدأ بعد</strong>
+                <span>&#1603;&#1608;&#1583; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577;</span>
+                <strong id="order-code-badge">&#1604;&#1605; &#1610;&#1576;&#1583;&#1571; &#1576;&#1593;&#1583;</strong>
               </article>
               <article class="overview-card">
-                <span>عدد البنود</span>
+                <span>&#1593;&#1583;&#1583; &#1575;&#1604;&#1576;&#1606;&#1608;&#1583;</span>
                 <strong id="order-lines-count">0</strong>
               </article>
               <article class="overview-card">
-                <span>إجمالي الكمية</span>
+                <span>&#1573;&#1580;&#1605;&#1575;&#1604;&#1610; &#1575;&#1604;&#1603;&#1605;&#1610;&#1577;</span>
                 <strong id="order-total-qty">0</strong>
               </article>
               <article class="overview-card">
-                <span>الحالة</span>
-                <strong id="order-status-badge">جاهزة</strong>
+                <span>&#1575;&#1604;&#1581;&#1575;&#1604;&#1577;</span>
+                <strong id="order-status-badge">&#1580;&#1575;&#1607;&#1586;&#1577;</strong>
               </article>
             </div>
 
             <div class="split-layout">
               <div class="sub-card">
-                <h3>بيانات العميل</h3>
+                <h3>&#1576;&#1610;&#1575;&#1606;&#1575;&#1578; &#1575;&#1604;&#1593;&#1605;&#1610;&#1604;</h3>
                 <div id="order-customer-filters" class="filters-grid"></div>
                 <div class="location-card compact">
                   <div>
-                    <h3>موقع الطلبية</h3>
-                    <p class="muted">يتم حفظه مع الطلبية ويظهر في صفحة التفاصيل.</p>
+                    <h3>&#1605;&#1608;&#1602;&#1593; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577;</h3>
+                    <p class="muted">&#1610;&#1578;&#1605; &#1581;&#1601;&#1592;&#1607; &#1605;&#1593; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577; &#1608;&#1610;&#1592;&#1607;&#1585; &#1601;&#1610; &#1589;&#1601;&#1581;&#1577; &#1575;&#1604;&#1578;&#1601;&#1575;&#1589;&#1610;&#1604;.</p>
                   </div>
                   <button id="capture-order-location" class="btn btn-soft" type="button">
-                    التقاط الموقع
+                    &#1575;&#1604;&#1578;&#1602;&#1575;&#1591; &#1575;&#1604;&#1605;&#1608;&#1602;&#1593;
                   </button>
                   <div id="order-location-summary" class="location-summary"></div>
                 </div>
               </div>
 
               <div class="sub-card">
-                <h3>إضافة بند جديد</h3>
+                <h3>&#1573;&#1590;&#1575;&#1601;&#1577; &#1576;&#1606;&#1583; &#1580;&#1583;&#1610;&#1583;</h3>
                 <div class="filters-grid">
                   <label class="field">
-                    <span>الموديل</span>
+                    <span>&#1575;&#1604;&#1605;&#1608;&#1583;&#1610;&#1604;</span>
                     <select id="order-model"></select>
                   </label>
 
                   <label class="field">
-                    <span>الصنف</span>
+                    <span>&#1575;&#1604;&#1589;&#1606;&#1601;</span>
                     <select id="order-item"></select>
                   </label>
 
                   <label class="field">
-                    <span>الكمية</span>
+                    <span>&#1575;&#1604;&#1604;&#1608;&#1606;</span>
+                    <select id="order-color"></select>
+                  </label>
+
+                  <label class="field">
+                    <span>&#1575;&#1604;&#1605;&#1602;&#1575;&#1587;</span>
+                    <select id="order-size"></select>
+                  </label>
+
+                  <label class="field">
+                    <span>&#1575;&#1604;&#1608;&#1581;&#1583;&#1577;</span>
+                    <select id="order-unit"></select>
+                  </label>
+
+                  <label class="field">
+                    <span>&#1575;&#1604;&#1603;&#1605;&#1610;&#1577;</span>
                     <input id="order-qty" type="number" min="0" step="0.01" value="1" />
                   </label>
                 </div>
-                <button id="add-order-line" class="btn btn-primary" type="button">إضافة البند</button>
+                <button id="add-order-line" class="btn btn-primary" type="button">&#1573;&#1590;&#1575;&#1601;&#1577; &#1575;&#1604;&#1576;&#1606;&#1583;</button>
               </div>
             </div>
 
@@ -368,12 +383,12 @@
             <div class="sub-card table-card">
               <div class="card-inline-head">
                 <div>
-                  <h3>بنود الطلبية</h3>
-                  <p id="order-code-label" class="muted">لا توجد طلبية مفتوحة الآن</p>
+                  <h3>&#1576;&#1606;&#1608;&#1583; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577;</h3>
+                  <p id="order-code-label" class="muted">&#1604;&#1575; &#1578;&#1608;&#1580;&#1583; &#1591;&#1604;&#1576;&#1610;&#1577; &#1605;&#1601;&#1578;&#1608;&#1581;&#1577; &#1575;&#1604;&#1570;&#1606;</p>
                 </div>
                 <div class="actions-row">
-                  <button id="cancel-order" class="btn btn-soft" type="button">إلغاء الطلبية</button>
-                  <button id="confirm-order" class="btn btn-primary" type="button">تأكيد الطلبية</button>
+                  <button id="cancel-order" class="btn btn-soft" type="button">&#1573;&#1604;&#1594;&#1575;&#1569; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577;</button>
+                  <button id="confirm-order" class="btn btn-primary" type="button">&#1578;&#1571;&#1603;&#1610;&#1583; &#1575;&#1604;&#1591;&#1604;&#1576;&#1610;&#1577;</button>
                 </div>
               </div>
 
@@ -381,15 +396,19 @@
                 <table>
                   <thead>
                     <tr>
-                      <th>الصنف</th>
-                      <th>الوحدة</th>
-                      <th>الكمية</th>
+                      <th>&#1603;&#1608;&#1583; &#1575;&#1604;&#1589;&#1606;&#1601;</th>
+                      <th>&#1575;&#1604;&#1605;&#1608;&#1583;&#1610;&#1604;</th>
+                      <th>&#1575;&#1604;&#1589;&#1606;&#1601;</th>
+                      <th>&#1575;&#1604;&#1604;&#1608;&#1606;</th>
+                      <th>&#1575;&#1604;&#1605;&#1602;&#1575;&#1587;</th>
+                      <th>&#1575;&#1604;&#1608;&#1581;&#1583;&#1577;</th>
+                      <th>&#1575;&#1604;&#1603;&#1605;&#1610;&#1577;</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody id="order-lines">
                     <tr>
-                      <td colspan="4" class="empty-state">لا توجد بنود بعد</td>
+                      <td colspan="8" class="empty-state">&#1604;&#1575; &#1578;&#1608;&#1580;&#1583; &#1576;&#1606;&#1608;&#1583; &#1576;&#1593;&#1583;</td>
                     </tr>
                   </tbody>
                 </table>
@@ -397,7 +416,7 @@
             </div>
           </section>
 
-          <section class="glass page-section hidden" data-page="orders-browser">
+<section class="glass page-section hidden" data-page="orders-browser">
             <div class="section-head">
               <h2>عرض الطلبيات</h2>
               <p>عرض ملخص حسب المندوب ثم قائمة الطلبات ثم صفحة تفاصيل كاملة لكل طلبية.</p>
@@ -512,6 +531,10 @@
                 </div>
                 <div class="filters-grid">
                   <label class="field">
+                    <span>كود الفرع</span>
+                    <input id="customer-branch-code" type="text" />
+                  </label>
+                  <label class="field">
                     <span>الكود</span>
                     <input id="customer-code" type="text" placeholder="C003" required />
                   </label>
@@ -524,28 +547,108 @@
                     <input id="customer-rep" type="text" />
                   </label>
                   <label class="field">
+                    <span>كود المندوب</span>
+                    <input id="customer-rep-code" type="text" />
+                  </label>
+                  <label class="field">
                     <span>التصنيف</span>
                     <input id="customer-category" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>تصنيف 1</span>
+                    <input id="customer-category1" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>تصنيف 2</span>
+                    <input id="customer-category2" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>تصنيف 3</span>
+                    <input id="customer-category3" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>تصنيف 4</span>
+                    <input id="customer-category4" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>تصنيف 5</span>
+                    <input id="customer-category5" type="text" />
                   </label>
                   <label class="field">
                     <span>القطاع</span>
                     <input id="customer-sector" type="text" />
                   </label>
                   <label class="field">
+                    <span>كود القطاع</span>
+                    <input id="customer-sector-code" type="text" />
+                  </label>
+                  <label class="field">
                     <span>المنطقة</span>
                     <input id="customer-area" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>كود المنطقة</span>
+                    <input id="customer-area-code" type="text" />
                   </label>
                   <label class="field">
                     <span>العنوان</span>
                     <input id="customer-address" type="text" />
                   </label>
                   <label class="field">
-                    <span>الموبايل</span>
+                    <span>التليفون</span>
                     <input id="customer-phone" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>المحمول</span>
+                    <input id="customer-mobile" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>الفاكس</span>
+                    <input id="customer-fax" type="text" />
                   </label>
                   <label class="field">
                     <span>البريد الإلكتروني</span>
                     <input id="customer-email" type="email" />
+                  </label>
+                  <label class="field">
+                    <span>نوع العميل</span>
+                    <input id="customer-type" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>الخصم</span>
+                    <input id="customer-discount" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>حد الائتمان</span>
+                    <input id="customer-credit-limit" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>حد أوراق القبض</span>
+                    <input id="customer-receivables-credit-limit" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>عدد ارتداد الأوراق</span>
+                    <input id="customer-bounced-count" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>تجاوز حد الائتمان</span>
+                    <input id="customer-credit-limit-exceeded" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>أقصى عدد فواتير مفتوحة</span>
+                    <input id="customer-max-open-invoices" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>تسهيلات أجل</span>
+                    <input id="customer-terms-credit" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>تسهيلات أوراق قبض</span>
+                    <input id="customer-receivables-terms" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>كود العميل الرئيسي</span>
+                    <input id="customer-parent-code" type="text" />
                   </label>
                   <label class="field inline-check">
                     <span>الحالة</span>
@@ -579,18 +682,22 @@
                         <th>الكود</th>
                         <th>العميل</th>
                         <th>المندوب</th>
+                        <th>القطاع</th>
                         <th>المنطقة</th>
+                        <th>المحمول</th>
+                        <th>نوع العميل</th>
                         <th>الحالة</th>
                         <th>الإجراءات</th>
                       </tr>
                     </thead>
                     <tbody id="customers-table">
                       <tr>
-                        <td colspan="6" class="empty-state">لا توجد بيانات بعد</td>
+                        <td colspan="9" class="empty-state">لا توجد بيانات بعد</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
+                <div id="customers-pager" class="table-pager"></div>
               </div>
             </div>
           </section>
@@ -642,6 +749,10 @@
                     <span>الوصف</span>
                     <textarea id="item-description" rows="4"></textarea>
                   </label>
+                  <label class="field field-span">
+                    <span>متغيرات المنتج</span>
+                    <textarea id="item-variants" rows="6" placeholder="كل سطر بالشكل: اللون | المقاس | الوحدة"></textarea>
+                  </label>
                 </div>
                 <div class="actions-row">
                   <button id="item-submit" class="btn btn-primary" type="submit">حفظ المنتج</button>
@@ -667,6 +778,8 @@
                         <th>الكود</th>
                         <th>المنتج</th>
                         <th>الموديل</th>
+                        <th>الوحدة</th>
+                        <th>المتغيرات</th>
                         <th>السعر</th>
                         <th>الحالة</th>
                         <th>الإجراءات</th>
@@ -674,11 +787,12 @@
                     </thead>
                     <tbody id="items-table">
                       <tr>
-                        <td colspan="6" class="empty-state">لا توجد بيانات بعد</td>
+                        <td colspan="8" class="empty-state">لا توجد بيانات بعد</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
+                <div id="items-pager" class="table-pager"></div>
               </div>
             </div>
           </section>
@@ -1213,7 +1327,7 @@
       </section>
     </div>
 
-    <dialog id="details-dialog" class="details-dialog">
+    <dialog id="details-dialog" class="details-dialog order-sheet-dialog">
       <div class="dialog-head">
         <div>
           <p class="eyebrow">Order Details</p>

@@ -1228,6 +1228,10 @@ thead {
   border-radius: 28px;
 }
 
+.order-sheet-dialog .dialog-head {
+  display: none;
+}
+
 .details-dialog::backdrop {
   background: rgba(33, 20, 8, 0.48);
   backdrop-filter: blur(5px);
@@ -1335,6 +1339,133 @@ thead {
   flex-wrap: wrap;
 }
 
+.order-size-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(88px, 1fr));
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+
+.order-sheet {
+  padding: 18px 6px 8px;
+  display: grid;
+  gap: 20px;
+}
+
+.order-sheet-header {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.order-sheet-header h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 2.8vw, 2.4rem);
+  color: #15263f;
+}
+
+.order-sheet-separator {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1a73ff, #2b8cff);
+}
+
+.order-sheet-card,
+.order-sheet-items {
+  padding: 24px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(252, 252, 253, 0.98), rgba(244, 246, 249, 0.98));
+  border: 1px solid rgba(16, 60, 120, 0.08);
+  box-shadow: 0 18px 34px rgba(17, 42, 84, 0.08);
+}
+
+.order-sheet-card-head,
+.order-sheet-items-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.order-sheet-card-head h3,
+.order-sheet-items-head h3 {
+  margin: 0;
+  font-size: 1.7rem;
+  color: #18273f;
+}
+
+.order-sheet-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin-bottom: 14px;
+}
+
+.order-sheet-meta-side {
+  display: grid;
+  gap: 10px;
+}
+
+.order-sheet-meta-side p,
+.order-sheet-address p {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.9;
+  color: #1f2f49;
+}
+
+.order-sheet-address {
+  padding-top: 8px;
+}
+
+.order-sheet-map-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.map-link-solid {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #15905f;
+  color: #ffffff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.map-link-solid:hover {
+  background: #0f7d51;
+}
+
+.order-sheet-table-wrap {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(18, 58, 107, 0.1);
+}
+
+.order-sheet-table thead th {
+  background: linear-gradient(180deg, #f8fafc, #eef3f9);
+  color: #18273f;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.order-sheet-table tbody td {
+  background: rgba(255, 255, 255, 0.96);
+  color: #21314c;
+}
+
+.order-sheet-back {
+  min-width: 92px;
+}
+
 @media (max-width: 1180px) {
   .home-panels-three,
   .dashboard-layout.bottom,
@@ -1350,6 +1481,10 @@ thead {
   .hero-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .order-size-grid {
+    grid-template-columns: repeat(4, minmax(88px, 1fr));
+  }
 }
 
 @media (max-width: 1020px) {
@@ -1359,7 +1494,8 @@ thead {
   .home-hero,
   .dashboard-layout,
   .detail-hero,
-  .detail-info-grid {
+  .detail-info-grid,
+  .order-sheet-meta {
     grid-template-columns: 1fr;
   }
 
@@ -1398,5 +1534,21 @@ thead {
 
   .location-card {
     grid-template-columns: 1fr;
+  }
+
+  .order-size-grid {
+    grid-template-columns: repeat(2, minmax(88px, 1fr));
+  }
+
+  .order-sheet-card,
+  .order-sheet-items {
+    padding: 18px;
+  }
+
+  .order-sheet-card-head,
+  .order-sheet-items-head,
+  .order-sheet-map-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
