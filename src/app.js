@@ -2592,7 +2592,7 @@ function renderProductionDashboardV2(payload) {
     }
 
     syncProductionStaticCopy();
-    renderProductionOverviewV2(payload);
+    renderProductionOverviewFlowV2(payload);
     hydrateProductionFiltersV2(payload.filterOptions || {});
 
     ui.productionMetrics.innerHTML = [
@@ -2719,6 +2719,206 @@ function renderProductionSourceColumnV2(card) {
           }
         </div>
       </article>
+    `;
+  }
+
+  function renderProductionOverviewFlowV2(payload) {
+    const sourceCards = Array.isArray(payload.sourceCards) ? payload.sourceCards : [];
+    const cardsBySource = new Map(sourceCards.map((card) => [card.source, card]));
+    const readyCard = cardsBySource.get("Ø§Ù„Ø¬Ø§Ù‡Ø²") || emptyProductionSourceCardV2("Ø§Ù„Ø¬Ø§Ù‡Ø²");
+    const menCard = cardsBySource.get("Ø¯Ø§Ø®Ù„ÙŠ") || emptyProductionSourceCardV2("Ø¯Ø§Ø®Ù„ÙŠ");
+    const wingsCard = cardsBySource.get("ÙˆÙŠÙ†ÙƒØ²") || emptyProductionSourceCardV2("ÙˆÙŠÙ†ÙƒØ²");
+    const selectedSource = payload.selectedSource && payload.selectedSource !== "Ø§Ù„ÙƒÙ„" ? payload.selectedSource : "";
+    const internalTotal = Number((menCard.totalDozens || 0) + (wingsCard.totalDozens || 0));
+    const displayTotal = selectedSource === "Ø§Ù„Ø¬Ø§Ù‡Ø²"
+      ? Number(readyCard.totalDozens || 0)
+      : selectedSource === "ÙˆÙŠÙ†ÙƒØ²"
+        ? Number(wingsCard.totalDozens || 0)
+        : selectedSource === "Ø¯Ø§Ø®Ù„ÙŠ"
+          ? internalTotal
+          : Number((readyCard.totalDozens || 0) + internalTotal);
+
+    if (ui.productionHeadlineTitle) {
+      ui.productionHeadlineTitle.textContent = selectedSource
+        ? `Ø¥Ù†ØªØ§Ø¬ ${selectedSource}`
+        : "Ø¥Ù†ØªØ§Ø¬ Ù…Ø¬Ù…ÙˆØ¹Ø© Ø³Ù…Ø§Ù‚ÙŠØ© Ø¥Ø®ÙˆØ§Ù†";
+    }
+    if (ui.productionHeadlineCaption) {
+      ui.productionHeadlineCaption.textContent = selectedSource
+        ? `Ø§Ù„ØªØ¯ÙÙ‚ Ø§Ù„Ø­Ø§Ù„ÙŠ Ù…Ø±ØªØ¨ Ø¨Ø§Ù„Ø¯Ø³ØªØ© Ù„Ù…Ø³Ø§Ø± ${selectedSource}.`
+        : "Ø§Ù„ØªØ¯ÙÙ‚ Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ Ù…Ø±ØªØ¨ Ø¨Ø§Ù„Ø¯Ø³ØªØ© ÙˆÙ…Ø¨Ù†ÙŠ Ø¹Ù„Ù‰ Ù†ÙØ³ ØªØ±ØªÙŠØ¨ Ø®Ø·ÙˆØ· Ø§Ù„Ø¥Ù†ØªØ§Ø¬.";
+    }
+    if (ui.productionOverallTotal) {
+      ui.productionOverallTotal.textContent = formatRoundedNumber(displayTotal || 0);
+    }
+    if (ui.productionOverviewBoard) {
+      ui.productionOverviewBoard.innerHTML = renderProductionFlowBoardMarkupV2({
+        selectedSource,
+        readyCard,
+        menCard,
+        wingsCard,
+        internalTotal
+      });
+      ui.productionOverviewBoard.querySelectorAll("[data-production-source-card]").forEach((card) => {
+        card.addEventListener("click", function () {
+          state.productionSourceTab = card.dataset.productionSourceCard || "";
+          setActiveProductionSourceTab();
+          onLoadProductionDashboard();
+        });
+      });
+    }
+    setActiveProductionSourceTab();
+  }
+
+  function emptyProductionSourceCardV2(source) {
+    return { source, totalDozens: 0, destinationTotals: [], lineTotals: [] };
+  }
+
+  function normalizeProductionFlowTokenV2(value) {
+    return String(value || "")
+      .replace(/[أإآ]/g, "ا")
+      .replace(/ى/g, "ي")
+      .replace(/ة/g, "ه")
+      .replace(/[()]/g, "")
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function productionFlowValueV2(card, aliases) {
+    const targets = aliases.map(normalizeProductionFlowTokenV2);
+    const resolve = (rows) =>
+      (Array.isArray(rows) ? rows : [])
+        .filter((row) => {
+          const label = normalizeProductionFlowTokenV2(row.label || "");
+          return targets.some((target) => label.includes(target) || target.includes(label));
+        })
+        .reduce((sum, row) => sum + Number(row.total || 0), 0);
+    const destinationTotal = resolve(card.destinationTotals);
+    return destinationTotal > 0 ? destinationTotal : resolve(card.lineTotals);
+  }
+
+  function productionFlowStepMarkupV2(label, value, className) {
+    return `
+      <div class="production-flow-node ${className || ""}">
+        <strong>${escapeHtml(formatRoundedNumber(value || 0))}</strong>
+        <span>${escapeHtml(label)}</span>
+      </div>
+    `;
+  }
+
+  function renderProductionFlowChainMarkupV2(card, steps, className) {
+    return `
+      <div class="production-flow-chain ${className || ""}">
+        ${steps
+          .map(
+            (step, index) => `
+              <div class="production-flow-chain-item ${index < steps.length - 1 ? "with-arrow" : ""}">
+                ${productionFlowStepMarkupV2(step.label, productionFlowValueV2(card, step.aliases), className)}
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    `;
+  }
+
+  function renderProductionFlowBoardMarkupV2(context) {
+    const readySteps = [
+      { label: "Ø§Ù„Ù‚Øµ Ø§Ù„Ø¬Ø§Ù‡Ø²", aliases: ["Ø§Ù„Ù‚Øµ Ø§Ù„Ø¬Ø§Ù‡Ø²", "Ù‚Øµ Ø§Ù„Ø¬Ø§Ù‡Ø²"] },
+      { label: "ÙƒÙ†ØªØ±ÙˆÙ„", aliases: ["ÙƒÙ†ØªØ±ÙˆÙ„", "Ø§Ù„ÙƒÙ†ØªØ±ÙˆÙ„"] },
+      { label: "ØªØ´ØºÙŠÙ„ Ø§Ù„Ø¨Ù†Ø·Ù„ÙˆÙ†", aliases: ["ØªØ´ØºÙŠÙ„ Ø§Ù„Ø¨Ù†Ø·Ù„ÙˆÙ†"] },
+      { label: "ØªØ´ØºÙŠÙ„ Ø§Ù„ØªÙŠÙˆØ¨", aliases: ["ØªØ´ØºÙŠÙ„ Ø§Ù„ØªÙŠÙˆØ¨"] },
+      { label: "ÙØ±Ø² Ø§Ù„Ø¬Ø§Ù‡Ø²", aliases: ["ÙØ±Ø² Ø§Ù„Ø¬Ø§Ù‡Ø²", "Ø§Ù„ÙØ±Ø²"] },
+      { label: "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¬Ø§Ù‡Ø²", aliases: ["ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¬Ø§Ù‡Ø²"] }
+    ];
+    const wingsSteps = [
+      { label: "Ø§Ù„Ù‚Øµ", aliases: ["Ø§Ù„Ù‚Øµ"] },
+      { label: "ÙƒÙ†ØªØ±ÙˆÙ„", aliases: ["ÙƒÙ†ØªØ±ÙˆÙ„", "Ø§Ù„ÙƒÙ†ØªØ±ÙˆÙ„"] },
+      { label: "Ø®Ø· Ø§Ù„Ø¨ÙŠØ¨ÙŠ", aliases: ["Ø®Ø· Ø§Ù„Ø¨ÙŠØ¨ÙŠ", "Ø®Ø· Ø§Ù„Ø¨ÙŠØªÙŠ"] },
+      { label: "Ù‚Ù†Ø§Ù„Ø© ÙˆÙŠÙ†ÙƒØ²", aliases: ["Ù‚Ù†Ø§Ù„Ø© ÙˆÙŠÙ†ÙƒØ²", "ÙØªØ§Ù„Ø© ÙˆÙŠÙ†ÙƒØ²", "Ù‚Ù†Ø§Ù†Ù‡ ÙˆÙŠÙ†ÙƒØ²"] },
+      { label: "Ø´ÙˆÙŠØª ÙˆÙŠÙ†ÙƒØ²", aliases: ["Ø´ÙˆÙŠØª ÙˆÙŠÙ†ÙƒØ²", "Ø´ÙˆÙŠØª ÙˆÙŠÙ†ÙƒØ²"] },
+      { label: "Ø§Ù„ÙØ±Ø²", aliases: ["Ø§Ù„ÙØ±Ø²"] },
+      { label: "ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒØ²", aliases: ["ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒØ²"] }
+    ];
+    const menMainSteps = [
+      { label: "Ø§Ù„Ù‚Øµ", aliases: ["Ø§Ù„Ù‚Øµ"] },
+      { label: "Ø§Ù„ÙƒÙ†ØªØ±ÙˆÙ„", aliases: ["Ø§Ù„ÙƒÙ†ØªØ±ÙˆÙ„", "ÙƒÙ†ØªØ±ÙˆÙ„"] },
+      { label: "ØªØ´ØºÙŠÙ„ Ø´ÙˆÙŠØª", aliases: ["ØªØ´ØºÙŠÙ„ Ø´ÙˆÙŠØª", "ØªØ´ØºÙŠÙ„ Ø´ÙˆØ±Øª", "ØªØ´ØºÙŠÙ„ Ø´ÙˆØ¨Øª"] },
+      { label: "Ø³ÙŠÙˆØ±", aliases: ["Ø³ÙŠÙˆØ±"] },
+      { label: "Ø³ÙŠÙˆØ± Ù…ØªÙ†ÙˆØ¹", aliases: ["Ø³ÙŠÙˆØ± Ù…ØªÙ†ÙˆØ¹"] },
+      { label: "Ø¬ÙˆÙƒØ± Ø¨ÙŠØ±Ø§ÙŠØ±", aliases: ["Ø¬ÙˆÙƒØ± Ø¨ÙŠØ±Ø§ÙŠØ±", "Ø¬ÙˆÙƒØ±", "Ø¨ÙŠØ±Ø§ÙŠØ±"] },
+      { label: "Ø³Ù„ÙŠØ¨", aliases: ["Ø³Ù„ÙŠØ¨"] },
+      { label: "Ù‡Ø§Ù Ø´ÙˆÙŠØª", aliases: ["Ù‡Ø§Ù Ø´ÙˆÙŠØª", "Ù‡Ø§Ù Ø´ÙˆØ±Øª"] },
+      { label: "Ù‡ÙˆØª Ù…Ø§Ù† ÙØ§Ù†Ù„Ø©", aliases: ["Ù‡ÙˆØª Ù…Ø§Ù† ÙØ§Ù†Ù„Ø©", "Ù‡ÙˆØª Ù…Ø§Ù† Ù‚Ù†Ø§Ù„Ø©"] },
+      { label: "Ø§Ù„ÙØ±Ø²", aliases: ["Ø§Ù„ÙØ±Ø²"] },
+      { label: "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠ", aliases: ["ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠ"] }
+    ];
+    const menSideSteps = [
+      { label: "Ù†Øµ ÙƒÙ…", aliases: ["Ù†Øµ ÙƒÙ…"] },
+      { label: "Ù†Øµ ÙƒÙ… Ù…ØªÙØ±Ø¹", aliases: ["Ù†Øµ ÙƒÙ… Ù…ØªÙØ±Ø¹"] },
+      { label: "Ù‡ÙˆØª Ù…Ø§Ù† ÙƒÙ„Ø³ÙˆÙ†", aliases: ["Ù‡ÙˆØª Ù…Ø§Ù† ÙƒÙ„Ø³ÙˆÙ†", "Ù‡ÙˆØª Ù…Ø§Ù† ÙƒÙ„ÙˆØª"] },
+      { label: "Ù‡Ø§Ù Ø´ÙˆÙŠØª Ø´ÙˆØ±ØªÙŠÙ†", aliases: ["Ù‡Ø§Ù Ø´ÙˆÙŠØª Ø´ÙˆØ±ØªÙŠÙ†", "Ù‡Ø§Ù Ø´ÙˆØ±Øª Ø´ÙˆØ±ØªÙŠÙ†"] }
+    ];
+
+    const allView = !context.selectedSource;
+    const showReady = allView || context.selectedSource === "Ø§Ù„Ø¬Ø§Ù‡Ø²";
+    const showInternal = allView || context.selectedSource === "Ø¯Ø§Ø®Ù„ÙŠ";
+    const showWingsOnly = context.selectedSource === "ÙˆÙŠÙ†ÙƒØ²";
+
+    const readyBlock = showReady
+      ? `
+        <section class="production-lane ready-lane" data-production-source-card="Ø§Ù„Ø¬Ø§Ù‡Ø²">
+          <div class="production-lane-total">${productionFlowStepMarkupV2("Ø§Ù„Ø¬Ø§Ù‡Ø²", context.readyCard.totalDozens || 0, "lane-total")}</div>
+          ${renderProductionFlowChainMarkupV2(context.readyCard, readySteps, "ready-chain")}
+        </section>
+      `
+      : "";
+
+    const wingsBlock = `
+      <section class="production-sub-lane wings-lane" data-production-source-card="ÙˆÙŠÙ†ÙƒØ²">
+        <div class="production-lane-total">${productionFlowStepMarkupV2("ÙˆÙŠÙ†ÙƒØ²", context.wingsCard.totalDozens || 0, "lane-total")}</div>
+        ${renderProductionFlowChainMarkupV2(context.wingsCard, wingsSteps, "wings-chain")}
+      </section>
+    `;
+
+    const menBlock = `
+      <section class="production-sub-lane men-lane" data-production-source-card="Ø¯Ø§Ø®Ù„ÙŠ">
+        <div class="production-lane-total">${productionFlowStepMarkupV2("Ø±Ø¬Ø§Ù„ÙŠ", context.menCard.totalDozens || 0, "lane-total")}</div>
+        <div class="production-men-grid">
+          <div class="production-men-side side-left">
+            ${menSideSteps.slice(0, 2).map((step) => productionFlowStepMarkupV2(step.label, productionFlowValueV2(context.menCard, step.aliases), "minor-node")).join("")}
+          </div>
+          ${renderProductionFlowChainMarkupV2(context.menCard, menMainSteps, "men-chain")}
+          <div class="production-men-side side-right">
+            ${menSideSteps.slice(2).map((step) => productionFlowStepMarkupV2(step.label, productionFlowValueV2(context.menCard, step.aliases), "minor-node")).join("")}
+          </div>
+        </div>
+      </section>
+    `;
+
+    if (showWingsOnly) {
+      return `<div class="production-flowboard single-source">${wingsBlock}</div>`;
+    }
+
+    const internalBlock = showInternal
+      ? `
+        <section class="production-internal-group" data-production-source-card="Ø¯Ø§Ø®Ù„ÙŠ">
+          <div class="production-internal-total">${productionFlowStepMarkupV2("Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠ", context.internalTotal || 0, "lane-total internal-total")}</div>
+          <div class="production-internal-split">
+            ${wingsBlock}
+            ${menBlock}
+          </div>
+        </section>
+      `
+      : "";
+
+    return `
+      <div class="production-flowboard ${allView ? "overview-mode" : "single-source"}">
+        ${internalBlock}
+        ${readyBlock}
+      </div>
     `;
   }
 

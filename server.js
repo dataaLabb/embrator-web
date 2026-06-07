@@ -403,6 +403,17 @@ function summarizeTop(rows, key, valueKey, limit = 6) {
 }
 
 // ─── express ───────────────────────────────────────────────────────────────────
+function summarizeAll(rows, key, valueKey) {
+  const map = new Map();
+  rows.forEach((row) => {
+    const label = String(row[key] || "").trim() || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯";
+    map.set(label, (map.get(label) || 0) + Number(row[valueKey] || 0));
+  });
+  return Array.from(map.entries())
+    .map(([label, total]) => ({ label, total: Number(total.toFixed(2)) }))
+    .sort((a, b) => b.total - a.total);
+}
+
 const app = express();
 
 app.set("trust proxy", 1);
@@ -1497,6 +1508,8 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
           totalDozens: Number(sourceDozens.toFixed(2)),
           totalQuantity: Number(sourceQty.toFixed(2)),
           recordsCount: sourceRows.length,
+          destinationTotals: summarizeAll(sourceRows, "destination", "dozens"),
+          lineTotals: summarizeAll(sourceRows, "lineName", "dozens"),
           topDestinations: summarizeTop(sourceRows, "destination", "dozens", 6),
           topLines: summarizeTop(sourceRows, "lineName", "dozens", 4)
         };
