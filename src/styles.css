@@ -899,6 +899,197 @@ textarea:focus {
   margin-top: 18px;
 }
 
+.production-tree-board {
+  display: grid;
+  gap: 18px;
+}
+
+.production-tree-root-card {
+  padding: 20px 22px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 40px rgba(7, 10, 17, 0.22);
+}
+
+.production-tree-root-card h3 {
+  margin: 6px 0 8px;
+  font-size: clamp(1.5rem, 2vw, 2.1rem);
+}
+
+.production-tree-root-card p {
+  color: rgba(245, 247, 251, 0.82);
+}
+
+.production-tree-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.95fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.production-tree-panel,
+.production-tree-branch {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.production-tree-panel[data-production-source-card],
+.production-tree-branch[data-production-source-card] {
+  cursor: pointer;
+}
+
+.production-tree-panel[data-production-source-card]:hover,
+.production-tree-branch[data-production-source-card]:hover {
+  border-color: rgba(95, 171, 255, 0.34);
+  box-shadow: 0 14px 30px rgba(31, 155, 255, 0.14);
+}
+
+.production-tree-panel-head,
+.production-tree-branch-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.production-tree-panel-head h4,
+.production-tree-branch-head h5 {
+  margin: 6px 0 0;
+  font-size: 1.24rem;
+}
+
+.production-tree-panel-head strong,
+.production-tree-branch-head strong {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #f5f7fb;
+  white-space: nowrap;
+}
+
+.production-tree-split {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.82fr) minmax(0, 1.18fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.production-tree-sequence {
+  display: grid;
+  gap: 8px;
+}
+
+.production-tree-sequence.compact {
+  gap: 7px;
+}
+
+.production-tree-sequence-item {
+  display: grid;
+  gap: 8px;
+  justify-items: stretch;
+}
+
+.production-tree-sequence-item.with-arrow::after {
+  content: "";
+  width: 14px;
+  height: 18px;
+  margin-inline: auto;
+  background: linear-gradient(180deg, rgba(132, 198, 255, 0.9) 0%, rgba(132, 198, 255, 0.9) 62%, transparent 62%);
+  clip-path: polygon(50% 100%, 0 56%, 35% 56%, 35% 0, 65% 0, 65% 56%, 100% 56%);
+}
+
+.production-tree-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 52px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: #f6efe4;
+  color: #211912;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+}
+
+.production-tree-step.compact {
+  min-height: 48px;
+  padding: 10px 14px;
+}
+
+.production-tree-step.ready-tone {
+  background: linear-gradient(135deg, #fff7e7, #f1dcc3);
+}
+
+.production-tree-step.wings-tone {
+  background: linear-gradient(135deg, #fff8ea, #edd7c0);
+}
+
+.production-tree-step.men-tone {
+  background: linear-gradient(135deg, #f4f7fb, #dfe7f3);
+}
+
+.production-tree-label {
+  font-size: clamp(0.95rem, 1.2vw, 1.08rem);
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.production-tree-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(16, 18, 24, 0.08);
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.production-branch-callout {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.production-branch-token-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.production-branch-token {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #181818;
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.production-branch-token.men-tone {
+  background: linear-gradient(135deg, #eef4fb, #dfe8f4);
+}
+
+.production-branch-token strong {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
 .production-flowboard {
   display: grid;
   grid-template-columns: minmax(0, 2.2fr) minmax(280px, 0.95fr);
@@ -1099,6 +1290,12 @@ textarea:focus {
   .production-total-card {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .production-tree-grid,
+  .production-tree-split,
+  .production-branch-token-grid {
+    grid-template-columns: 1fr;
   }
 
   .production-flowboard,

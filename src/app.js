@@ -2592,7 +2592,7 @@ function renderProductionDashboardV2(payload) {
     }
 
     syncProductionStaticCopy();
-    renderProductionOverviewV2(payload);
+    renderProductionOverviewFlowV2(payload);
     hydrateProductionFiltersV2(payload.filterOptions || {});
 
     ui.productionMetrics.innerHTML = [
@@ -2820,6 +2820,49 @@ function renderProductionSourceColumnV2(card) {
             (step, index) => `
               <div class="production-flow-chain-item ${index < steps.length - 1 ? "with-arrow" : ""}">
                 ${productionFlowStepMarkupV2(step.label, productionFlowValueV2(card, step.aliases), className)}
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    `;
+  }
+
+  function renderProductionTreeStepMarkupV2(card, step, tone, compact) {
+    const value = productionFlowValueV2(card, step.aliases);
+    return `
+      <div class="production-tree-step ${tone || ""} ${compact ? "compact" : ""}">
+        <span class="production-tree-label">${escapeHtml(step.label)}</span>
+        <strong class="production-tree-value">${escapeHtml(formatRoundedNumber(value || 0))}</strong>
+      </div>
+    `;
+  }
+
+  function renderProductionTreeSequenceMarkupV2(card, steps, tone, compact) {
+    return `
+      <div class="production-tree-sequence ${compact ? "compact" : ""}">
+        ${steps
+          .map(
+            (step, index) => `
+              <div class="production-tree-sequence-item ${index < steps.length - 1 ? "with-arrow" : ""}">
+                ${renderProductionTreeStepMarkupV2(card, step, tone, compact)}
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    `;
+  }
+
+  function renderProductionBranchTokensMarkupV2(card, steps, tone) {
+    return `
+      <div class="production-branch-token-grid">
+        ${steps
+          .map(
+            (step) => `
+              <div class="production-branch-token ${tone || ""}">
+                <span>${escapeHtml(step.label)}</span>
+                <strong>${escapeHtml(formatRoundedNumber(productionFlowValueV2(card, step.aliases) || 0))}</strong>
               </div>
             `
           )
@@ -3076,8 +3119,8 @@ function renderProductionSourceColumnV2(card) {
       { label: "\u0627\u0644\u0642\u0635", aliases: ["\u0627\u0644\u0642\u0635"] },
       { label: "\u0643\u0646\u062A\u0631\u0648\u0644", aliases: ["\u0643\u0646\u062A\u0631\u0648\u0644", "\u0627\u0644\u0643\u0646\u062A\u0631\u0648\u0644"] },
       { label: "\u062E\u0637 \u0627\u0644\u0628\u064A\u0628\u064A", aliases: ["\u062E\u0637 \u0627\u0644\u0628\u064A\u0628\u064A", "\u062E\u0637 \u0627\u0644\u0628\u064A\u062A\u064A"] },
-      { label: "\u0641\u062A\u0627\u0644\u0629 \u0648\u064A\u0646\u0643\u0632", aliases: ["\u0641\u062A\u0627\u0644\u0629 \u0648\u064A\u0646\u0643\u0632", "\u0642\u0646\u0627\u0644\u0629 \u0648\u064A\u0646\u0643\u0632", "\u0642\u0646\u0627\u0646\u0647 \u0648\u064A\u0646\u0643\u0632"] },
-      { label: "\u0634\u0648\u064A\u062A \u0648\u064A\u0646\u0643\u0632", aliases: ["\u0634\u0648\u064A\u062A \u0648\u064A\u0646\u0643\u0632"] },
+      { label: "\u0641\u0627\u0646\u0644\u0629 \u0648\u064A\u0646\u0643\u0631", aliases: ["\u0641\u0627\u0646\u0644\u0629 \u0648\u064A\u0646\u0643\u0631", "\u0641\u062A\u0627\u0644\u0629 \u0648\u064A\u0646\u0643\u0632", "\u0642\u0646\u0627\u0644\u0629 \u0648\u064A\u0646\u0643\u0632", "\u0642\u0646\u0627\u0646\u0647 \u0648\u064A\u0646\u0643\u0632"] },
+      { label: "\u0634\u0648\u0631\u062A \u0648\u064A\u0646\u0643\u0631", aliases: ["\u0634\u0648\u0631\u062A \u0648\u064A\u0646\u0643\u0631", "\u0634\u0648\u064A\u062A \u0648\u064A\u0646\u0643\u0632"] },
       { label: "\u0627\u0644\u0641\u0631\u0632", aliases: ["\u0627\u0644\u0641\u0631\u0632"] },
       { label: "\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0648\u064A\u0646\u0643\u0632", aliases: ["\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0648\u064A\u0646\u0643\u0632"] }
     ];
@@ -3085,12 +3128,12 @@ function renderProductionSourceColumnV2(card) {
     const menMainSteps = [
       { label: "\u0627\u0644\u0642\u0635", aliases: ["\u0627\u0644\u0642\u0635"] },
       { label: "\u0627\u0644\u0643\u0646\u062A\u0631\u0648\u0644", aliases: ["\u0627\u0644\u0643\u0646\u062A\u0631\u0648\u0644", "\u0643\u0646\u062A\u0631\u0648\u0644"] },
-      { label: "\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u064A\u062A", aliases: ["\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u064A\u062A", "\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u0631\u062A", "\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u0628\u062A"] },
+      { label: "\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u0631\u062A", aliases: ["\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u064A\u062A", "\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u0631\u062A", "\u062A\u0634\u063A\u064A\u0644 \u0634\u0648\u0628\u062A"] },
       { label: "\u0633\u064A\u0648\u0631", aliases: ["\u0633\u064A\u0648\u0631"] },
       { label: "\u0633\u064A\u0648\u0631 \u0645\u062A\u0646\u0648\u0639", aliases: ["\u0633\u064A\u0648\u0631 \u0645\u062A\u0646\u0648\u0639"] },
       { label: "\u062C\u0648\u0643\u0631 \u0628\u0631\u0627\u064A\u0631", aliases: ["\u062C\u0648\u0643\u0631 \u0628\u0631\u0627\u064A\u0631", "\u062C\u0648\u0643\u0631", "\u0628\u0631\u0627\u064A\u0631"] },
       { label: "\u0633\u0644\u064A\u0628", aliases: ["\u0633\u0644\u064A\u0628"] },
-      { label: "\u0647\u0627\u0641 \u0634\u0648\u064A\u062A", aliases: ["\u0647\u0627\u0641 \u0634\u0648\u064A\u062A", "\u0647\u0627\u0641 \u0634\u0648\u0631\u062A"] },
+      { label: "\u0647\u0627\u0641 \u0634\u0648\u0631\u062A \u0623\u0648\u0644\u064A\u0629", aliases: ["\u0647\u0627\u0641 \u0634\u0648\u064A\u062A", "\u0647\u0627\u0641 \u0634\u0648\u0631\u062A", "\u0647\u0627\u0641 \u0634\u0648\u0631\u062A \u0623\u0648\u0644\u064A\u0629"] },
       { label: "\u0647\u0648\u062A \u0645\u0627\u0646 \u0641\u0627\u0646\u0644\u0629", aliases: ["\u0647\u0648\u062A \u0645\u0627\u0646 \u0641\u0627\u0646\u0644\u0629", "\u0647\u0648\u062A \u0645\u0627\u0646 \u0642\u0646\u0627\u0644\u0629"] },
       { label: "\u0627\u0644\u0641\u0631\u0632", aliases: ["\u0627\u0644\u0641\u0631\u0632"] },
       { label: "\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0627\u0644\u062F\u0627\u062E\u0644\u064A", aliases: ["\u062A\u0633\u0644\u064A\u0645\u0627\u062A \u0627\u0644\u062F\u0627\u062E\u0644\u064A"] }
@@ -3100,7 +3143,7 @@ function renderProductionSourceColumnV2(card) {
       { label: "\u0646\u0635 \u0643\u0645", aliases: ["\u0646\u0635 \u0643\u0645"] },
       { label: "\u0646\u0635 \u0643\u0645 \u0645\u062A\u0641\u0631\u0639", aliases: ["\u0646\u0635 \u0643\u0645 \u0645\u062A\u0641\u0631\u0639"] },
       { label: "\u0647\u0648\u062A \u0645\u0627\u0646 \u0643\u0644\u0633\u0648\u0646", aliases: ["\u0647\u0648\u062A \u0645\u0627\u0646 \u0643\u0644\u0633\u0648\u0646", "\u0647\u0648\u062A \u0645\u0627\u0646 \u0643\u0644\u0648\u062A"] },
-      { label: "\u0647\u0627\u0641 \u0634\u0648\u064A\u062A \u0634\u0648\u0631\u062A\u064A\u0646", aliases: ["\u0647\u0627\u0641 \u0634\u0648\u064A\u062A \u0634\u0648\u0631\u062A\u064A\u0646", "\u0647\u0627\u0641 \u0634\u0648\u0631\u062A \u0634\u0648\u0631\u062A\u064A\u0646"] }
+      { label: "\u0647\u0627\u0641 \u0634\u0648\u0631\u062A \u0634\u062A\u0648\u064A", aliases: ["\u0647\u0627\u0641 \u0634\u0648\u0631\u062A \u0634\u062A\u0648\u064A", "\u0647\u0627\u0641 \u0634\u0648\u064A\u062A \u0634\u0648\u0631\u062A\u064A\u0646", "\u0647\u0627\u0641 \u0634\u0648\u0631\u062A \u0634\u0648\u0631\u062A\u064A\u0646"] }
     ];
 
     const allView = !context.selectedSource;
@@ -3110,44 +3153,78 @@ function renderProductionSourceColumnV2(card) {
 
     const readyBlock = showReady
       ? `
-        <section class="production-lane ready-lane" data-production-source-card="${SOURCE_READY}">
-          <div class="production-lane-total">${productionFlowStepMarkupV2(SOURCE_READY, context.readyCard.totalDozens || 0, "lane-total")}</div>
-          ${renderProductionFlowChainMarkupV2(context.readyCard, readySteps, "ready-chain")}
+        <section class="production-tree-panel ready-panel" data-production-source-card="${SOURCE_READY}">
+          <div class="production-tree-panel-head">
+            <div>
+              <span class="eyebrow">المسار الجاهز</span>
+              <h4>${SOURCE_READY}</h4>
+            </div>
+            <strong>${escapeHtml(formatRoundedNumber(context.readyCard.totalDozens || 0))}</strong>
+          </div>
+          ${renderProductionTreeSequenceMarkupV2(context.readyCard, readySteps, "ready-tone")}
         </section>
       `
       : "";
 
     const wingsBlock = `
-      <section class="production-sub-lane wings-lane" data-production-source-card="${SOURCE_WINGS}">
-        <div class="production-lane-total">${productionFlowStepMarkupV2(SOURCE_WINGS, context.wingsCard.totalDozens || 0, "lane-total")}</div>
-        ${renderProductionFlowChainMarkupV2(context.wingsCard, wingsSteps, "wings-chain")}
+      <section class="production-tree-branch wings-branch" data-production-source-card="${SOURCE_WINGS}">
+        <div class="production-tree-branch-head">
+          <span class="eyebrow">ينقسم إلى</span>
+          <h5>${SOURCE_WINGS}</h5>
+          <strong>${escapeHtml(formatRoundedNumber(context.wingsCard.totalDozens || 0))}</strong>
+        </div>
+        ${renderProductionTreeSequenceMarkupV2(context.wingsCard, wingsSteps, "wings-tone", true)}
       </section>
     `;
 
+    const menPrimarySteps = menMainSteps.slice(0, 8);
+    const menTailSteps = menMainSteps.slice(8);
+
     const menBlock = `
-      <section class="production-sub-lane men-lane" data-production-source-card="${SOURCE_INTERNAL}">
-        <div class="production-lane-total">${productionFlowStepMarkupV2("\u0631\u062C\u0627\u0644\u064A", context.menCard.totalDozens || 0, "lane-total")}</div>
-        <div class="production-men-grid">
-          <div class="production-men-side side-left">
-            ${menSideSteps.slice(0, 2).map((step) => productionFlowStepMarkupV2(step.label, productionFlowValueV2(context.menCard, step.aliases), "minor-node")).join("")}
-          </div>
-          ${renderProductionFlowChainMarkupV2(context.menCard, menMainSteps, "men-chain")}
-          <div class="production-men-side side-right">
-            ${menSideSteps.slice(2).map((step) => productionFlowStepMarkupV2(step.label, productionFlowValueV2(context.menCard, step.aliases), "minor-node")).join("")}
-          </div>
+      <section class="production-tree-branch men-branch">
+        <div class="production-tree-branch-head">
+          <span class="eyebrow">ينقسم إلى</span>
+          <h5>رجالي</h5>
+          <strong>${escapeHtml(formatRoundedNumber(context.menCard.totalDozens || 0))}</strong>
         </div>
+        ${renderProductionTreeSequenceMarkupV2(context.menCard, menPrimarySteps, "men-tone")}
+        <div class="production-branch-callout">
+          <span class="eyebrow">ويتفرع منها</span>
+          ${renderProductionBranchTokensMarkupV2(context.menCard, menSideSteps.slice(0, 2), "men-tone")}
+        </div>
+        ${renderProductionTreeSequenceMarkupV2(context.menCard, [menTailSteps[0]], "men-tone")}
+        <div class="production-branch-callout">
+          <span class="eyebrow">ويتفرع منها</span>
+          ${renderProductionBranchTokensMarkupV2(context.menCard, menSideSteps.slice(2), "men-tone")}
+        </div>
+        ${renderProductionTreeSequenceMarkupV2(context.menCard, menTailSteps.slice(1), "men-tone")}
       </section>
     `;
 
     if (showWingsOnly) {
-      return `<div class="production-flowboard single-source">${wingsBlock}</div>`;
+      return `
+        <div class="production-tree-board single-source">
+          <div class="production-tree-root-card">
+            <span class="eyebrow">إنتاج مجموعة ساقية إخوان</span>
+            <h3>${SOURCE_INTERNAL}</h3>
+            <p>عرض تفصيلي لمسار وينكر داخل الداخلي.</p>
+          </div>
+          ${wingsBlock}
+        </div>
+      `;
     }
 
     const internalBlock = showInternal
       ? `
-        <section class="production-internal-group" data-production-source-card="${SOURCE_INTERNAL}">
-          <div class="production-internal-total">${productionFlowStepMarkupV2(SOURCE_INTERNAL, context.internalTotal || 0, "lane-total internal-total")}</div>
-          <div class="production-internal-split">
+        <section class="production-tree-panel internal-panel" data-production-source-card="${SOURCE_INTERNAL}">
+          <div class="production-tree-panel-head">
+            <div>
+              <span class="eyebrow">إنتاج مجموعة ساقية إخوان</span>
+              <h4>${SOURCE_INTERNAL}</h4>
+            </div>
+            <strong>${escapeHtml(formatRoundedNumber(context.internalTotal || 0))}</strong>
+          </div>
+          <div class="production-tree-split">
             ${wingsBlock}
             ${menBlock}
           </div>
@@ -3156,9 +3233,16 @@ function renderProductionSourceColumnV2(card) {
       : "";
 
     return `
-      <div class="production-flowboard ${allView ? "overview-mode" : "single-source"}">
-        ${internalBlock}
-        ${readyBlock}
+      <div class="production-tree-board ${allView ? "overview-mode" : "single-source"}">
+        <div class="production-tree-root-card">
+          <span class="eyebrow">إنتاج مجموعة ساقية إخوان</span>
+          <h3>${context.selectedSource || "الهيكل الرئيسي"}</h3>
+          <p>لوحة تنفيذية مرتبة بصريًا حسب الأقسام والمراحل والتفرعات الداخلية.</p>
+        </div>
+        <div class="production-tree-grid">
+          ${internalBlock}
+          ${readyBlock}
+        </div>
       </div>
     `;
   }
