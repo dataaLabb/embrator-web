@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
@@ -7,7 +7,7 @@ const { Pool } = require("pg");
 
 dotenv.config();
 
-// ─── startup validation ────────────────────────────────────────────────────────
+// â”€â”€â”€ startup validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const jwtSecret = (process.env.JWT_SECRET || "").trim();
 const WEAK_PLACEHOLDERS = new Set(["", "change-me", "replace-with-a-long-random-secret"]);
 if (WEAK_PLACEHOLDERS.has(jwtSecret) || jwtSecret.length < 32) {
@@ -31,7 +31,7 @@ if (!adminPassword || !ordersPassword || !dashPassword) {
     process.exit(1);
   }
   console.warn(
-    "WARNING: Password env vars not set — using weak dev-only defaults. Do NOT use in production.\n" +
+    "WARNING: Password env vars not set â€” using weak dev-only defaults. Do NOT use in production.\n" +
     "  ADMIN_PASSWORD            ORDERS_SCREEN_PASSWORD            DASHBOARD_SCREEN_PASSWORD"
   );
 }
@@ -43,7 +43,7 @@ const SEED_DASH_PASSWORD   = dashPassword   || "dev-dash!789";
 const port = Number(process.env.PORT || 3000);
 const databaseUrl = String(process.env.DATABASE_URL || "").trim();
 
-// ─── database ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function buildPgConfig() {
   if (!databaseUrl) throw new Error("DATABASE_URL is missing.");
   let parsed;
@@ -66,7 +66,7 @@ function buildPgConfig() {
 
 const pool = new Pool(buildPgConfig());
 
-// ─── rate limiter (in-memory, no extra dependencies) ──────────────────────────
+// â”€â”€â”€ rate limiter (in-memory, no extra dependencies) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const rateStore = new Map();
 setInterval(() => {
   const now = Date.now();
@@ -88,13 +88,13 @@ function rateLimit(max, windowMs) {
   return (req, res, next) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     if (isRateLimited(`${req.path}:${ip}`, max, windowMs)) {
-      return res.status(429).json({ message: "طلبات كثيرة جدًا. انتظر قليلًا ثم حاول مجددًا." });
+      return res.status(429).json({ message: "Ø·Ù„Ø¨Ø§Øª ÙƒØ«ÙŠØ±Ø© Ø¬Ø¯Ù‹Ø§. Ø§Ù†ØªØ¸Ø± Ù‚Ù„ÙŠÙ„Ù‹Ø§ Ø«Ù… Ø­Ø§ÙˆÙ„ Ù…Ø¬Ø¯Ø¯Ù‹Ø§." });
     }
     next();
   };
 }
 
-// ─── JWT (8-hour expiry) ───────────────────────────────────────────────────────
+// â”€â”€â”€ JWT (8-hour expiry) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const TOKEN_TTL = 8 * 60 * 60;
 
 function signToken(payload) {
@@ -117,7 +117,7 @@ function verifyToken(token) {
   return payload;
 }
 
-// ─── screen tokens (orders screen, 4-hour expiry) ─────────────────────────────
+// â”€â”€â”€ screen tokens (orders screen, 4-hour expiry) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SCREEN_TOKEN_TTL = 4 * 60 * 60;
 const screenSecret = jwtSecret + ":screen-v1";
 
@@ -144,19 +144,19 @@ function verifyScreenToken(token, scope) {
   return true;
 }
 
-// ─── middleware ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function authRequired(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
   const payload = verifyToken(token);
-  if (!payload) return res.status(401).json({ message: "غير مصرح أو انتهت صلاحية الجلسة." });
+  if (!payload) return res.status(401).json({ message: "ØºÙŠØ± Ù…ØµØ±Ø­ Ø£Ùˆ Ø§Ù†ØªÙ‡Øª ØµÙ„Ø§Ø­ÙŠØ© Ø§Ù„Ø¬Ù„Ø³Ø©." });
   req.user = payload;
   next();
 }
 
 function adminRequired(req, res, next) {
   if (String(req.user?.email || "").toLowerCase() !== "admin@embrator.com") {
-    return res.status(403).json({ message: "Ù‡Ø°Ù‡ Ø§Ù„ØµÙØ­Ø© Ù…ØªØ§Ø­Ø© Ù„Ù„Ø£Ø¯Ù…Ù† ÙÙ‚Ø·." });
+    return res.status(403).json({ message: "Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜ÂµÃ™ÂÃ˜Â­Ã˜Â© Ã™â€¦Ã˜ÂªÃ˜Â§Ã˜Â­Ã˜Â© Ã™â€žÃ™â€žÃ˜Â£Ã˜Â¯Ã™â€¦Ã™â€  Ã™ÂÃ™â€šÃ˜Â·." });
   }
   next();
 }
@@ -164,15 +164,15 @@ function adminRequired(req, res, next) {
 function ordersScreenRequired(req, res, next) {
   const token = req.headers["x-screen-token"] || "";
   if (!verifyScreenToken(token, "orders")) {
-    return res.status(403).json({ message: "يلزم فتح شاشة الطلبيات بكلمة المرور أولًا." });
+    return res.status(403).json({ message: "ÙŠÙ„Ø²Ù… ÙØªØ­ Ø´Ø§Ø´Ø© Ø§Ù„Ø·Ù„Ø¨ÙŠØ§Øª Ø¨ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø£ÙˆÙ„Ù‹Ø§." });
   }
   next();
 }
 
-// ─── helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function serverError(res, error) {
   console.error("[server error]", error?.message || error);
-  return res.status(500).json({ message: "حدث خطأ داخلي. حاول مرة أخرى." });
+  return res.status(500).json({ message: "Ø­Ø¯Ø« Ø®Ø·Ø£ Ø¯Ø§Ø®Ù„ÙŠ. Ø­Ø§ÙˆÙ„ Ù…Ø±Ø© Ø£Ø®Ø±Ù‰." });
 }
 
 async function query(sql, params) {
@@ -258,11 +258,13 @@ function isAdminRequest(req) {
 
 const PRODUCTION_SHEET_ID = process.env.PRODUCTION_SHEET_ID || "1T4aYUQn6MRme1LfKe6ryd4YbJMaEN6VNobnwjM9yEZo";
 const PRODUCTION_SHEETS = [
-  { key: "all", title: "الكل", gid: null },
-  { key: "ready", title: "الجاهز", gid: "0" },
-  { key: "internal", title: "داخلي", gid: "1577931770" },
-  { key: "wings", title: "وينكز", gid: "221278991" }
+  { key: "all", title: "Ø§Ù„ÙƒÙ„", gid: null },
+  { key: "ready", title: "Ø§Ù„Ø¬Ø§Ù‡Ø²", gid: "0" },
+  { key: "internal", title: "Ø¯Ø§Ø®Ù„ÙŠ", gid: "1577931770" },
+  { key: "wings", title: "ÙˆÙŠÙ†ÙƒØ²", gid: "221278991" }
 ];
+const ALL_PRODUCTION_SOURCE_TITLE = PRODUCTION_SHEETS[0].title;
+const PRODUCTION_SOURCE_SHEETS = PRODUCTION_SHEETS.filter((sheet) => sheet.gid);
 const PRODUCTION_CACHE_TTL_MS = 10 * 60 * 1000;
 let productionRowsCache = { time: 0, rows: [] };
 let productionRowsPromise = null;
@@ -311,9 +313,9 @@ function normalizeHeader(value) {
 
 function normalizeArabicToken(value) {
   return normalizeHeader(value)
-    .replace(/[أإآ]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/ة/g, "ه")
+    .replace(/[Ø£Ø¥Ø¢]/g, "Ø§")
+    .replace(/Ù‰/g, "ÙŠ")
+    .replace(/Ø©/g, "Ù‡")
     .replace(/[()]/g, "")
     .replace(/[^\p{L}\p{N}\s]/gu, "")
     .replace(/\s+/g, " ")
@@ -327,7 +329,7 @@ function compactArabicToken(value) {
 
 function softArabicToken(value) {
   return compactArabicToken(value)
-    .replace(/[ايوهة]/g, "")
+    .replace(/[Ø§ÙŠÙˆÙ‡Ø©]/g, "")
     .replace(/(.)\1+/g, "$1");
 }
 
@@ -383,10 +385,10 @@ function sumProductionRowsByAliases(rows, aliases, valueKey) {
 }
 
 function deliveryAliasesForSource(sheetKey) {
-  if (sheetKey === "ready") return ["تسليمات الجاهز", "تسليمات جاهز"];
-  if (sheetKey === "internal") return ["انتاج تسليمات", "تسليمات الداخلي", "تسليمات داخلي"];
+  if (sheetKey === "ready") return ["ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¬Ø§Ù‡Ø²", "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø¬Ø§Ù‡Ø²"];
+  if (sheetKey === "internal") return ["Ø§Ù†ØªØ§Ø¬ ØªØ³Ù„ÙŠÙ…Ø§Øª", "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠ", "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø¯Ø§Ø®Ù„ÙŠ"];
   if (sheetKey === "wings") {
-    return ["تسليمات وينكز", "تسليمات وينكيز", "تسليمات وينكر", "تسليمات رينكيز"];
+    return ["ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒØ²", "ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒÙŠØ²", "ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒØ±", "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø±ÙŠÙ†ÙƒÙŠØ²"];
   }
   return [];
 }
@@ -414,11 +416,29 @@ function toIsoDate(value) {
   return parsed.toISOString().slice(0, 10);
 }
 
+function appendProductionMapTotal(map, label, value) {
+  const safeLabel = String(label || "").trim() || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯";
+  map.set(safeLabel, (map.get(safeLabel) || 0) + Number(value || 0));
+}
+
+function mapTotalsToRows(map, limit = Infinity) {
+  return Array.from(map.entries())
+    .map(([label, total]) => ({ label, total: Number(Number(total || 0).toFixed(2)) }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, limit);
+}
+
+function mapTotalsToRowsSortedByLabel(map) {
+  return Array.from(map.entries())
+    .map(([label, total]) => ({ label, total: Number(Number(total || 0).toFixed(2)) }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
 async function fetchProductionSheetRows(sheet) {
   const url = `https://docs.google.com/spreadsheets/d/${PRODUCTION_SHEET_ID}/export?format=csv&gid=${sheet.gid}`;
   const response = await fetch(url, { headers: { "User-Agent": "embrator-web/1.0" } });
   if (!response.ok) {
-    throw new Error(`تعذر قراءة شيت الإنتاج: ${sheet.title}`);
+    throw new Error(`ØªØ¹Ø°Ø± Ù‚Ø±Ø§Ø¡Ø© Ø´ÙŠØª Ø§Ù„Ø¥Ù†ØªØ§Ø¬: ${sheet.title}`);
   }
   const csv = await response.text();
   const rows = parseCsvRows(csv);
@@ -430,42 +450,61 @@ async function fetchProductionSheetRows(sheet) {
   };
 
   const indexes = {
-    lineNumber: indexOfAny(["رقم الخط"]),
-    lineName: indexOfAny(["اسم الخط"]),
-    date: indexOfAny(["التاريخ"]),
-    storyNo: indexOfAny(["رقم القصة", "رقم القصه"]),
-    modelCode: indexOfAny(["كود الموديل", "كود المويل", "كو المويل"]),
-    workOrder: indexOfAny(["امر الشغل (د)", "امر الشغل ()"]),
-    itemName: indexOfAny(["الصنف"]),
-    size: indexOfAny(["المقاس"]),
-    color: indexOfAny(["اللون"]),
-    quantity: indexOfAny(["الكمية", "الكميه"]),
-    dozens: indexOfAny(["الكمية بالدستة", "الكمية بالستة", "الكميه بالسته"]),
-    destination: indexOfAny(["موجه الي"])
+    lineNumber: indexOfAny(["Ø±Ù‚Ù… Ø§Ù„Ø®Ø·"]),
+    lineName: indexOfAny(["Ø§Ø³Ù… Ø§Ù„Ø®Ø·"]),
+    date: indexOfAny(["Ø§Ù„ØªØ§Ø±ÙŠØ®"]),
+    storyNo: indexOfAny(["Ø±Ù‚Ù… Ø§Ù„Ù‚ØµØ©", "Ø±Ù‚Ù… Ø§Ù„Ù‚ØµÙ‡"]),
+    modelCode: indexOfAny(["ÙƒÙˆØ¯ Ø§Ù„Ù…ÙˆØ¯ÙŠÙ„", "ÙƒÙˆØ¯ Ø§Ù„Ù…ÙˆÙŠÙ„", "ÙƒÙˆ Ø§Ù„Ù…ÙˆÙŠÙ„"]),
+    workOrder: indexOfAny(["Ø§Ù…Ø± Ø§Ù„Ø´ØºÙ„ (Ø¯)", "Ø§Ù…Ø± Ø§Ù„Ø´ØºÙ„ ()"]),
+    itemName: indexOfAny(["Ø§Ù„ØµÙ†Ù"]),
+    size: indexOfAny(["Ø§Ù„Ù…Ù‚Ø§Ø³"]),
+    color: indexOfAny(["Ø§Ù„Ù„ÙˆÙ†"]),
+    quantity: indexOfAny(["Ø§Ù„ÙƒÙ…ÙŠØ©", "Ø§Ù„ÙƒÙ…ÙŠÙ‡"]),
+    dozens: indexOfAny(["Ø§Ù„ÙƒÙ…ÙŠØ© Ø¨Ø§Ù„Ø¯Ø³ØªØ©", "Ø§Ù„ÙƒÙ…ÙŠØ© Ø¨Ø§Ù„Ø³ØªØ©", "Ø§Ù„ÙƒÙ…ÙŠÙ‡ Ø¨Ø§Ù„Ø³ØªÙ‡"]),
+    destination: indexOfAny(["Ù…ÙˆØ¬Ù‡ Ø§Ù„ÙŠ"])
   };
 
-  return rows.map((row) => ({
-    source: sheet.title,
-    lineNumber: indexes.lineNumber >= 0 ? String(row[indexes.lineNumber] || "").trim() : "",
-    lineName: indexes.lineName >= 0 ? String(row[indexes.lineName] || "").trim() : "",
-    date: indexes.date >= 0 ? toIsoDate(row[indexes.date]) : "",
-    storyNo: indexes.storyNo >= 0 ? String(row[indexes.storyNo] || "").trim() : "",
-    modelCode: indexes.modelCode >= 0 ? String(row[indexes.modelCode] || "").trim() : "",
-    workOrder: indexes.workOrder >= 0 ? String(row[indexes.workOrder] || "").trim() : "",
-    itemName: indexes.itemName >= 0 ? String(row[indexes.itemName] || "").trim() : "",
-    size: indexes.size >= 0 ? String(row[indexes.size] || "").trim() : "",
-    color: indexes.color >= 0 ? String(row[indexes.color] || "").trim() : "",
-    quantity: indexes.quantity >= 0 ? toNumber(row[indexes.quantity]) : 0,
-    dozens: indexes.dozens >= 0 ? toNumber(row[indexes.dozens]) : 0,
-    destination: indexes.destination >= 0 ? String(row[indexes.destination] || "").trim() : "",
-    lineNameKey: indexes.lineName >= 0 ? normalizeArabicToken(row[indexes.lineName]) : "",
-    itemNameKey: indexes.itemName >= 0 ? normalizeArabicToken(row[indexes.itemName]) : "",
-    destinationKey: indexes.destination >= 0 ? normalizeArabicToken(row[indexes.destination]) : "",
-    colorKey: indexes.color >= 0 ? normalizeArabicToken(row[indexes.color]) : "",
-    sizeKey: indexes.size >= 0 ? normalizeArabicToken(row[indexes.size]) : "",
-    modelCodeKey: indexes.modelCode >= 0 ? normalizeArabicToken(row[indexes.modelCode]) : "",
-    dateMonth: indexes.date >= 0 ? toIsoDate(row[indexes.date]).slice(0, 7) : ""
-  }));
+  const deliveryAliases = deliveryAliasesForSource(sheet.key);
+  return rows.map((row) => {
+    const lineName = indexes.lineName >= 0 ? String(row[indexes.lineName] || "").trim() : "";
+    const date = indexes.date >= 0 ? toIsoDate(row[indexes.date]) : "";
+    const storyNo = indexes.storyNo >= 0 ? String(row[indexes.storyNo] || "").trim() : "";
+    const modelCode = indexes.modelCode >= 0 ? String(row[indexes.modelCode] || "").trim() : "";
+    const itemName = indexes.itemName >= 0 ? String(row[indexes.itemName] || "").trim() : "";
+    const size = indexes.size >= 0 ? String(row[indexes.size] || "").trim() : "";
+    const color = indexes.color >= 0 ? String(row[indexes.color] || "").trim() : "";
+    const destination = indexes.destination >= 0 ? String(row[indexes.destination] || "").trim() : "";
+    const rowData = {
+      source: sheet.title,
+      lineNumber: indexes.lineNumber >= 0 ? String(row[indexes.lineNumber] || "").trim() : "",
+      lineName,
+      date,
+      storyNo,
+      modelCode,
+      workOrder: indexes.workOrder >= 0 ? String(row[indexes.workOrder] || "").trim() : "",
+      itemName,
+      size,
+      color,
+      quantity: indexes.quantity >= 0 ? toNumber(row[indexes.quantity]) : 0,
+      dozens: indexes.dozens >= 0 ? toNumber(row[indexes.dozens]) : 0,
+      destination,
+      lineNameKey: normalizeArabicToken(lineName),
+      itemNameKey: normalizeArabicToken(itemName),
+      destinationKey: normalizeArabicToken(destination),
+      colorKey: normalizeArabicToken(color),
+      sizeKey: normalizeArabicToken(size),
+      modelCodeKey: normalizeArabicToken(modelCode),
+      dateMonth: date.slice(0, 7),
+      searchKey: [sheet.title, lineName, storyNo, modelCode, itemName, color, size, destination]
+        .map((value) => normalizeArabicToken(value))
+        .filter(Boolean)
+        .join(" ")
+    };
+    return {
+      ...rowData,
+      isDeliveryRow: rowMatchesProductionAliases(rowData, deliveryAliases)
+    };
+  });
 }
 
 async function getProductionRows() {
@@ -494,7 +533,7 @@ async function getProductionRows() {
 function summarizeTop(rows, key, valueKey, limit = 6) {
   const map = new Map();
   rows.forEach((row) => {
-    const label = String(row[key] || "").trim() || "غير محدد";
+    const label = String(row[key] || "").trim() || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯";
     map.set(label, (map.get(label) || 0) + Number(row[valueKey] || 0));
   });
   return Array.from(map.entries())
@@ -503,11 +542,11 @@ function summarizeTop(rows, key, valueKey, limit = 6) {
     .slice(0, limit);
 }
 
-// ─── express ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ express â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function summarizeAll(rows, key, valueKey) {
   const map = new Map();
   rows.forEach((row) => {
-    const label = String(row[key] || "").trim() || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯";
+    const label = String(row[key] || "").trim() || "Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â­Ã˜Â¯Ã˜Â¯";
     map.set(label, (map.get(label) || 0) + Number(row[valueKey] || 0));
   });
   return Array.from(map.entries())
@@ -559,18 +598,18 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "15mb" }));
 app.use(express.static(__dirname));
 
-// ─── routes ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true, service: "embrator-web", date: new Date().toISOString() });
 });
 
-// login — max 10 attempts per 15 min per IP
+// login â€” max 10 attempts per 15 min per IP
 app.post("/api/auth/login", rateLimit(10, 15 * 60_000), async (req, res) => {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) {
-      return res.status(400).json({ message: "البريد الإلكتروني وكلمة المرور مطلوبان." });
+      return res.status(400).json({ message: "Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ ÙˆÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ù…Ø·Ù„ÙˆØ¨Ø§Ù†." });
     }
     const rows = await query(
       `select id, email, full_name
@@ -582,7 +621,7 @@ app.post("/api/auth/login", rateLimit(10, 15 * 60_000), async (req, res) => {
       [String(email).trim().toLowerCase(), String(password)]
     );
     if (!rows.length) {
-      return res.status(401).json({ message: "البريد الإلكتروني أو كلمة المرور غير صحيحين." });
+      return res.status(401).json({ message: "Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ø£Ùˆ ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ØºÙŠØ± ØµØ­ÙŠØ­ÙŠÙ†." });
     }
     const user = rows[0];
     const token = signToken({ userId: user.id, email: user.email });
@@ -614,13 +653,13 @@ app.post("/api/users", authRequired, adminRequired, async (req, res) => {
     const isActive = boolValue(p.isActive);
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ ÙˆÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ù…Ø·Ù„ÙˆØ¨Ø§Ù†." });
+      return res.status(400).json({ message: "Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¥Ã™â€žÃ™Æ’Ã˜ÂªÃ˜Â±Ã™Ë†Ã™â€ Ã™Å  Ã™Ë†Ã™Æ’Ã™â€žÃ™â€¦Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â±Ã™Ë†Ã˜Â± Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨Ã˜Â§Ã™â€ ." });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ message: "ØµÙŠØºØ© Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ ØºÙŠØ± ØµØ­ÙŠØ­Ø©." });
+      return res.status(400).json({ message: "Ã˜ÂµÃ™Å Ã˜ÂºÃ˜Â© Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¥Ã™â€žÃ™Æ’Ã˜ÂªÃ˜Â±Ã™Ë†Ã™â€ Ã™Å  Ã˜ÂºÃ™Å Ã˜Â± Ã˜ÂµÃ˜Â­Ã™Å Ã˜Â­Ã˜Â©." });
     }
     if (password.length < 4) {
-      return res.status(400).json({ message: "ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙŠØ¬Ø¨ Ø£Ù† ØªÙƒÙˆÙ† 4 Ø£Ø­Ø±Ù Ø£Ùˆ Ø£ÙƒØ«Ø±." });
+      return res.status(400).json({ message: "Ã™Æ’Ã™â€žÃ™â€¦Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â±Ã™Ë†Ã˜Â± Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â£Ã™â€  Ã˜ÂªÃ™Æ’Ã™Ë†Ã™â€  4 Ã˜Â£Ã˜Â­Ã˜Â±Ã™Â Ã˜Â£Ã™Ë† Ã˜Â£Ã™Æ’Ã˜Â«Ã˜Â±." });
     }
 
     const rows = await query(
@@ -632,7 +671,7 @@ app.post("/api/users", authRequired, adminRequired, async (req, res) => {
     res.json({ user: rows[0] });
   } catch (error) {
     if (error?.code === "23505") {
-      return res.status(409).json({ message: "Ù‡Ø°Ø§ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ù…Ø³Ø¬Ù„ Ù…Ø³Ø¨Ù‚Ù‹Ø§." });
+      return res.status(409).json({ message: "Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã™â€¦Ã˜Â³Ã˜Â¬Ã™â€ž Ã™â€¦Ã˜Â³Ã˜Â¨Ã™â€šÃ™â€¹Ã˜Â§." });
     }
     serverError(res, error);
   }
@@ -647,13 +686,13 @@ app.put("/api/users/:id", authRequired, adminRequired, async (req, res) => {
     const isActive = boolValue(p.isActive);
 
     if (!email) {
-      return res.status(400).json({ message: "Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù…Ø·Ù„ÙˆØ¨." });
+      return res.status(400).json({ message: "Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¥Ã™â€žÃ™Æ’Ã˜ÂªÃ˜Â±Ã™Ë†Ã™â€ Ã™Å  Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨." });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ message: "ØµÙŠØºØ© Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ ØºÙŠØ± ØµØ­ÙŠØ­Ø©." });
+      return res.status(400).json({ message: "Ã˜ÂµÃ™Å Ã˜ÂºÃ˜Â© Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¥Ã™â€žÃ™Æ’Ã˜ÂªÃ˜Â±Ã™Ë†Ã™â€ Ã™Å  Ã˜ÂºÃ™Å Ã˜Â± Ã˜ÂµÃ˜Â­Ã™Å Ã˜Â­Ã˜Â©." });
     }
     if (password && password.length < 4) {
-      return res.status(400).json({ message: "ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙŠØ¬Ø¨ Ø£Ù† ØªÙƒÙˆÙ† 4 Ø£Ø­Ø±Ù Ø£Ùˆ Ø£ÙƒØ«Ø±." });
+      return res.status(400).json({ message: "Ã™Æ’Ã™â€žÃ™â€¦Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â±Ã™Ë†Ã˜Â± Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â£Ã™â€  Ã˜ÂªÃ™Æ’Ã™Ë†Ã™â€  4 Ã˜Â£Ã˜Â­Ã˜Â±Ã™Â Ã˜Â£Ã™Ë† Ã˜Â£Ã™Æ’Ã˜Â«Ã˜Â±." });
     }
 
     const existingRows = await query(
@@ -661,14 +700,14 @@ app.put("/api/users/:id", authRequired, adminRequired, async (req, res) => {
       [req.params.id]
     );
     if (!existingRows.length) {
-      return res.status(404).json({ message: "Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯." });
+      return res.status(404).json({ message: "Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯." });
     }
     const existing = existingRows[0];
     if (String(existing.id) === String(req.user.userId) && email !== String(req.user.email || "").toLowerCase()) {
-      return res.status(400).json({ message: "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØºÙŠÙŠØ± Ø¨Ø±ÙŠØ¯ Ø­Ø³Ø§Ø¨ Ø§Ù„Ø£Ø¯Ù…Ù† Ø§Ù„Ø­Ø§Ù„ÙŠ." });
+      return res.status(400).json({ message: "Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€  Ã˜ÂªÃ˜ÂºÃ™Å Ã™Å Ã˜Â± Ã˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜Â­Ã˜Â³Ã˜Â§Ã˜Â¨ Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â¯Ã™â€¦Ã™â€  Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â§Ã™â€žÃ™Å ." });
     }
     if (!isActive && String(existing.id) === String(req.user.userId)) {
-      return res.status(400).json({ message: "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ø­Ø§Ù„ÙŠ." });
+      return res.status(400).json({ message: "Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€  Ã˜ÂªÃ˜Â¹Ã˜Â·Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â³Ã˜Â§Ã˜Â¨ Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â§Ã™â€žÃ™Å ." });
     }
 
     const rows = await query(
@@ -687,7 +726,7 @@ app.put("/api/users/:id", authRequired, adminRequired, async (req, res) => {
     res.json({ user: rows[0] });
   } catch (error) {
     if (error?.code === "23505") {
-      return res.status(409).json({ message: "Ù‡Ø°Ø§ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ù…Ø³Ø¬Ù„ Ù…Ø³Ø¨Ù‚Ù‹Ø§." });
+      return res.status(409).json({ message: "Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã™â€¦Ã˜Â³Ã˜Â¬Ã™â€ž Ã™â€¦Ã˜Â³Ã˜Â¨Ã™â€šÃ™â€¹Ã˜Â§." });
     }
     serverError(res, error);
   }
@@ -750,7 +789,7 @@ app.get("/api/customers", authRequired, async (_req, res) => {
 app.post("/api/customers", authRequired, async (req, res) => {
   try {
     const p = req.body || {};
-    if (!p.code || !p.name) return res.status(400).json({ message: "كود العميل والاسم مطلوبان." });
+    if (!p.code || !p.name) return res.status(400).json({ message: "ÙƒÙˆØ¯ Ø§Ù„Ø¹Ù…ÙŠÙ„ ÙˆØ§Ù„Ø§Ø³Ù… Ù…Ø·Ù„ÙˆØ¨Ø§Ù†." });
     const rows = await query(
       `insert into customers (
          code, name, rep, category, sector, area, address, phone, email, is_active,
@@ -791,7 +830,7 @@ app.post("/api/customers", authRequired, async (req, res) => {
 app.put("/api/customers/:code", authRequired, async (req, res) => {
   try {
     const p = req.body || {};
-    if (!p.name) return res.status(400).json({ message: "اسم العميل مطلوب." });
+    if (!p.name) return res.status(400).json({ message: "Ø§Ø³Ù… Ø§Ù„Ø¹Ù…ÙŠÙ„ Ù…Ø·Ù„ÙˆØ¨." });
     const rows = await query(
       `update customers set
          name=$2, rep=$3, category=$4, sector=$5, area=$6, address=$7, phone=$8, email=$9, is_active=$10,
@@ -814,7 +853,7 @@ app.put("/api/customers/:code", authRequired, async (req, res) => {
         p.maxOpenInvoices||"", p.termsCredit||"", p.receivablesTerms||"", p.parentCustomerCode||""
       ]
     );
-    if (!rows.length) return res.status(404).json({ message: "العميل غير موجود." });
+    if (!rows.length) return res.status(404).json({ message: "Ø§Ù„Ø¹Ù…ÙŠÙ„ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯." });
     clearAnalyticsCache();
     res.json({ customer: rows[0] });
   } catch (error) {
@@ -853,7 +892,7 @@ app.post("/api/items", authRequired, async (req, res) => {
   try {
     const p = req.body || {};
     const variants = Array.isArray(p.variants) ? p.variants : [];
-    if (!p.code || !p.name) return res.status(400).json({ message: "كود المنتج والاسم مطلوبان." });
+    if (!p.code || !p.name) return res.status(400).json({ message: "ÙƒÙˆØ¯ Ø§Ù„Ù…Ù†ØªØ¬ ÙˆØ§Ù„Ø§Ø³Ù… Ù…Ø·Ù„ÙˆØ¨Ø§Ù†." });
     await client.query("begin");
     const rows = await client.query(
       `insert into items (code, name, model, unit, description, price, is_active)
@@ -920,7 +959,7 @@ app.post("/api/items-admin", authRequired, async (req, res) => {
   try {
     const p = req.body || {};
     const variants = Array.isArray(p.variants) ? p.variants : [];
-    if (!p.code || !p.name) return res.status(400).json({ message: "ÙƒÙˆØ¯ Ø§Ù„Ù…Ù†ØªØ¬ ÙˆØ§Ù„Ø§Ø³Ù… Ù…Ø·Ù„ÙˆØ¨Ø§Ù†." });
+    if (!p.code || !p.name) return res.status(400).json({ message: "Ã™Æ’Ã™Ë†Ã˜Â¯ Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬ Ã™Ë†Ã˜Â§Ã™â€žÃ˜Â§Ã˜Â³Ã™â€¦ Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨Ã˜Â§Ã™â€ ." });
     await client.query("begin");
     const rows = await client.query(
       `insert into items (code, name, model, unit, description, price, is_active)
@@ -951,7 +990,7 @@ app.put("/api/items-admin/:code", authRequired, async (req, res) => {
   try {
     const p = req.body || {};
     const variants = Array.isArray(p.variants) ? p.variants : [];
-    if (!p.name) return res.status(400).json({ message: "Ø§Ø³Ù… Ø§Ù„Ù…Ù†ØªØ¬ Ù…Ø·Ù„ÙˆØ¨." });
+    if (!p.name) return res.status(400).json({ message: "Ã˜Â§Ã˜Â³Ã™â€¦ Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬ Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨." });
     await client.query("begin");
     const rows = await client.query(
       `update items set name=$2, model=$3, unit=$4, description=$5, price=$6, is_active=$7
@@ -961,7 +1000,7 @@ app.put("/api/items-admin/:code", authRequired, async (req, res) => {
     );
     if (!rows.rows.length) {
       await client.query("rollback");
-      return res.status(404).json({ message: "Ø§Ù„Ù…Ù†ØªØ¬ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯." });
+      return res.status(404).json({ message: "Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯." });
     }
     await client.query(`delete from item_variants where item_code = $1`, [req.params.code]);
     for (const variant of variants) {
@@ -985,7 +1024,7 @@ app.put("/api/items-admin/:code", authRequired, async (req, res) => {
 app.post("/api/visits", authRequired, async (req, res) => {
   try {
     const p = req.body || {};
-    if (!p.code || !p.name) return res.status(400).json({ message: "بيانات العميل غير مكتملة." });
+    if (!p.code || !p.name) return res.status(400).json({ message: "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¹Ù…ÙŠÙ„ ØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø©." });
     await query(
       `insert into visits (customer_code,customer_name,rep,category,sector,area,address,arabic_address,lat,lng,map_url,created_by)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
@@ -1004,8 +1043,8 @@ app.post("/api/collections", authRequired, async (req, res) => {
     const p = req.body || {};
     const customer = p.customer || {};
     const amount = Number(p.amount || 0);
-    if (!customer.code) return res.status(400).json({ message: "بيانات العميل غير مكتملة." });
-    if (amount <= 0) return res.status(400).json({ message: "قيمة التحصيل يجب أن تكون أكبر من صفر." });
+    if (!customer.code) return res.status(400).json({ message: "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¹Ù…ÙŠÙ„ ØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø©." });
+    if (amount <= 0) return res.status(400).json({ message: "Ù‚ÙŠÙ…Ø© Ø§Ù„ØªØ­ØµÙŠÙ„ ÙŠØ¬Ø¨ Ø£Ù† ØªÙƒÙˆÙ† Ø£ÙƒØ¨Ø± Ù…Ù† ØµÙØ±." });
     await query(
       `insert into collections
          (customer_code,customer_name,rep,category,sector,area,address,arabic_address,lat,lng,map_url,
@@ -1033,7 +1072,7 @@ app.get("/api/collections/:id/cheque-image", authRequired, async (req, res) => {
       `select cheque_image from collections where id = $1 limit 1`,
       [req.params.id]
     );
-    if (!rows.length) return res.status(404).json({ message: "التحصيل غير موجود." });
+    if (!rows.length) return res.status(404).json({ message: "Ø§Ù„ØªØ­ØµÙŠÙ„ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯." });
     res.json({ chequeImage: rows[0].cheque_image || "" });
   } catch (error) {
     serverError(res, error);
@@ -1058,7 +1097,7 @@ app.post("/api/orders/line", authRequired, async (req, res) => {
     const size4xl = Number(p.size4xl || 0);
     const qty = sizeS + sizeM + sizeL + sizeXl + size2xl + size3xl + size4xl;
     if (!customer.code || !item.code || qty <= 0) {
-      return res.status(400).json({ message: "بيانات البند غير مكتملة." });
+      return res.status(400).json({ message: "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¨Ù†Ø¯ ØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø©." });
     }
 
     let orderId = "";
@@ -1079,11 +1118,11 @@ app.post("/api/orders/line", authRequired, async (req, res) => {
       const existing = orderRows.rows[0];
       if (!isAdmin && String(existing.created_by) !== String(req.user.userId)) {
         await client.query("rollback");
-        return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
+        return res.status(403).json({ message: "ØºÙŠØ± Ù…ØµØ±Ø­ Ø¨ØªØ¹Ø¯ÙŠÙ„ Ù‡Ø°Ù‡ Ø§Ù„Ø·Ù„Ø¨ÙŠØ©." });
       }
       if (!isAdmin && existing.status !== "draft") {
         await client.query("rollback");
-        return res.status(400).json({ message: "لا يمكن تعديل طلبية مؤكدة أو ملغية." });
+        return res.status(400).json({ message: "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„ Ø·Ù„Ø¨ÙŠØ© Ù…Ø¤ÙƒØ¯Ø© Ø£Ùˆ Ù…Ù„ØºÙŠØ©." });
       }
       orderId = existing.id;
       orderCode = existing.order_code;
@@ -1168,12 +1207,12 @@ app.delete("/api/orders/line/:lineId", authRequired, async (req, res) => {
        where ol.id = $1`,
       [req.params.lineId]
     );
-    if (!lineCheck.length) return res.status(404).json({ message: "البند غير موجود." });
+    if (!lineCheck.length) return res.status(404).json({ message: "Ø§Ù„Ø¨Ù†Ø¯ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯." });
     if (!isAdminRequest(req) && String(lineCheck[0].created_by) !== String(req.user.userId)) {
-      return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
+      return res.status(403).json({ message: "ØºÙŠØ± Ù…ØµØ±Ø­ Ø¨ØªØ¹Ø¯ÙŠÙ„ Ù‡Ø°Ù‡ Ø§Ù„Ø·Ù„Ø¨ÙŠØ©." });
     }
     if (!isAdminRequest(req) && lineCheck[0].status !== "draft") {
-      return res.status(400).json({ message: "لا يمكن تعديل طلبية مؤكدة أو ملغية." });
+      return res.status(400).json({ message: "Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„ Ø·Ù„Ø¨ÙŠØ© Ù…Ø¤ÙƒØ¯Ø© Ø£Ùˆ Ù…Ù„ØºÙŠØ©." });
     }
     const lineRows = await query(
       `delete from order_lines where id = $1 returning order_id`,
@@ -1193,19 +1232,19 @@ app.post("/api/orders/confirm", authRequired, async (req, res) => {
     const orderId  = String(req.body.orderId  || "").trim();
     const orderCode = String(req.body.orderCode || "").trim();
     if (!orderId && !orderCode) {
-      return res.status(400).json({ message: "بيانات الطلبية غير مكتملة." });
+      return res.status(400).json({ message: "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø·Ù„Ø¨ÙŠØ© ØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø©." });
     }
     const check = await query(
       `select id, created_by, status from orders
        where ($1 <> '' and id::text = $1) or ($2 <> '' and order_code = $2) limit 1`,
       [orderId, orderCode]
     );
-    if (!check.length) return res.status(404).json({ message: "الطلبية غير موجودة." });
+    if (!check.length) return res.status(404).json({ message: "Ø§Ù„Ø·Ù„Ø¨ÙŠØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©." });
     if (!isAdminRequest(req) && String(check[0].created_by) !== String(req.user.userId)) {
-      return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
+      return res.status(403).json({ message: "ØºÙŠØ± Ù…ØµØ±Ø­ Ø¨ØªØ¹Ø¯ÙŠÙ„ Ù‡Ø°Ù‡ Ø§Ù„Ø·Ù„Ø¨ÙŠØ©." });
     }
     if (!isAdminRequest(req) && check[0].status !== "draft") {
-      return res.status(400).json({ message: "الطلبية ليست في حالة مسودة." });
+      return res.status(400).json({ message: "Ø§Ù„Ø·Ù„Ø¨ÙŠØ© Ù„ÙŠØ³Øª ÙÙŠ Ø­Ø§Ù„Ø© Ù…Ø³ÙˆØ¯Ø©." });
     }
     const rows = await query(
       `update orders
@@ -1229,16 +1268,16 @@ app.post("/api/orders/location", authRequired, async (req, res) => {
     const orderId  = String(req.body.orderId  || "").trim();
     const orderCode = String(req.body.orderCode || "").trim();
     if (!orderId && !orderCode) {
-      return res.status(400).json({ message: "بيانات الطلبية غير مكتملة." });
+      return res.status(400).json({ message: "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø·Ù„Ø¨ÙŠØ© ØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø©." });
     }
     const check = await query(
       `select id, created_by, status from orders
        where ($1 <> '' and id::text = $1) or ($2 <> '' and order_code = $2) limit 1`,
       [orderId, orderCode]
     );
-    if (!check.length) return res.status(404).json({ message: "الطلبية غير موجودة." });
+    if (!check.length) return res.status(404).json({ message: "Ø§Ù„Ø·Ù„Ø¨ÙŠØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©." });
     if (!isAdminRequest(req) && String(check[0].created_by) !== String(req.user.userId)) {
-      return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
+      return res.status(403).json({ message: "ØºÙŠØ± Ù…ØµØ±Ø­ Ø¨ØªØ¹Ø¯ÙŠÙ„ Ù‡Ø°Ù‡ Ø§Ù„Ø·Ù„Ø¨ÙŠØ©." });
     }
     const rows = await query(
       `update orders
@@ -1260,19 +1299,19 @@ app.post("/api/orders/cancel", authRequired, async (req, res) => {
     const orderId  = String(req.body.orderId  || "").trim();
     const orderCode = String(req.body.orderCode || "").trim();
     if (!orderId && !orderCode) {
-      return res.status(400).json({ message: "بيانات الطلبية غير مكتملة." });
+      return res.status(400).json({ message: "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø·Ù„Ø¨ÙŠØ© ØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø©." });
     }
     const check = await query(
       `select id, created_by, status from orders
        where ($1 <> '' and id::text = $1) or ($2 <> '' and order_code = $2) limit 1`,
       [orderId, orderCode]
     );
-    if (!check.length) return res.status(404).json({ message: "الطلبية غير موجودة." });
+    if (!check.length) return res.status(404).json({ message: "Ø§Ù„Ø·Ù„Ø¨ÙŠØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©." });
     if (!isAdminRequest(req) && String(check[0].created_by) !== String(req.user.userId)) {
-      return res.status(403).json({ message: "غير مصرح بتعديل هذه الطلبية." });
+      return res.status(403).json({ message: "ØºÙŠØ± Ù…ØµØ±Ø­ Ø¨ØªØ¹Ø¯ÙŠÙ„ Ù‡Ø°Ù‡ Ø§Ù„Ø·Ù„Ø¨ÙŠØ©." });
     }
     if (!isAdminRequest(req) && check[0].status !== "draft") {
-      return res.status(400).json({ message: "الطلبية ليست في حالة مسودة." });
+      return res.status(400).json({ message: "Ø§Ù„Ø·Ù„Ø¨ÙŠØ© Ù„ÙŠØ³Øª ÙÙŠ Ø­Ø§Ù„Ø© Ù…Ø³ÙˆØ¯Ø©." });
     }
     const rows = await query(
       `update orders
@@ -1289,14 +1328,14 @@ app.post("/api/orders/cancel", authRequired, async (req, res) => {
   }
 });
 
-// orders browser — requires screen token
+// orders browser â€” requires screen token
 app.delete("/api/orders/:orderCode", authRequired, ordersScreenRequired, adminRequired, async (req, res) => {
   try {
     const rows = await query(
       `delete from orders where order_code = $1 returning id, order_code`,
       [req.params.orderCode]
     );
-    if (!rows.length) return res.status(404).json({ message: "Ø§Ù„Ø·Ù„Ø¨ÙŠØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©." });
+    if (!rows.length) return res.status(404).json({ message: "Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨Ã™Å Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯Ã˜Â©." });
     clearAnalyticsCache();
     res.json({ success: true, order: rows[0] });
   } catch (error) {
@@ -1335,7 +1374,7 @@ app.get("/api/orders/:orderCode", authRequired, ordersScreenRequired, async (req
       `select * from orders where order_code = $1 limit 1`,
       [req.params.orderCode]
     );
-    if (!orders.length) return res.status(404).json({ message: "الطلبية غير موجودة." });
+    if (!orders.length) return res.status(404).json({ message: "Ø§Ù„Ø·Ù„Ø¨ÙŠØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©." });
     const lines = await getOrderLines(orders[0].id);
     res.json({ order: orders[0], lines });
   } catch (error) {
@@ -1343,20 +1382,20 @@ app.get("/api/orders/:orderCode", authRequired, ordersScreenRequired, async (req
   }
 });
 
-// screen-access — max 10 attempts per 5 min per IP
+// screen-access â€” max 10 attempts per 5 min per IP
 const VALID_SCOPES = new Set(["orders", "dashboard"]);
 app.post("/api/screen-access", authRequired, rateLimit(10, 5 * 60_000), async (req, res) => {
   try {
     const scope = String(req.body.scope || "").trim();
     if (!VALID_SCOPES.has(scope)) {
-      return res.status(400).json({ message: "نطاق غير صحيح." });
+      return res.status(400).json({ message: "Ù†Ø·Ø§Ù‚ ØºÙŠØ± ØµØ­ÙŠØ­." });
     }
     const rows = await query(
       `select value from portal_settings where key = $1 limit 1`,
       [`${scope}_password`]
     );
     if (!rows.length || rows[0].value !== String(req.body.password || "")) {
-      return res.status(403).json({ message: "كلمة المرور غير صحيحة." });
+      return res.status(403).json({ message: "ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ØºÙŠØ± ØµØ­ÙŠØ­Ø©." });
     }
     const screenToken = signScreenToken(scope, req.user.userId);
     res.json({ success: true, screenToken });
@@ -1559,132 +1598,138 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
       const sizeKey = normalizeArabicToken(size);
       const modelKey = normalizeArabicToken(model);
       const recordsSearchKey = normalizeArabicToken(recordsSearch);
+      const sourceFilter = source && source !== ALL_PRODUCTION_SOURCE_TITLE ? source : "";
       const rows = await getProductionRows();
-
-      const dateScoped = rows.filter((row) => {
-        if (from && row.date && row.date < from) return false;
-        if (to && row.date && row.date > to) return false;
-        return true;
-      });
-
-      const sourceScoped = dateScoped.filter((row) => {
-        if (source && source !== "الكل" && row.source !== source) return false;
-        return true;
-      });
-
-      const filtered = sourceScoped.filter((row) => {
-        if (lineKey && row.lineNameKey !== lineKey) return false;
-        if (colorKey && row.colorKey !== colorKey) return false;
-        if (sizeKey && row.sizeKey !== sizeKey) return false;
-        if (month && row.dateMonth !== month) return false;
-        if (day && row.date !== day) return false;
-        if (modelKey && !row.modelCodeKey.includes(modelKey)) return false;
-        return true;
-      });
-
-      const totalQuantity = filtered.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
-      const totalDozens = filtered.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
-      const overallTotalQuantity = dateScoped.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
-      const overallTotalDozens = dateScoped.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
-
-      const allDeliveryAliases = PRODUCTION_SHEETS.flatMap((sheet) => deliveryAliasesForSource(sheet.key));
-      const deliveryRows = dateScoped.filter((row) => {
-        if (month && row.dateMonth !== month) return false;
-        if (day && row.date !== day) return false;
-        return rowMatchesProductionAliases(row, allDeliveryAliases);
-      });
-
+      const sourceCardAccumulators = new Map(
+        PRODUCTION_SOURCE_SHEETS.map((sheet) => [
+          sheet.title,
+          {
+            source: sheet.title,
+            totalDozens: 0,
+            totalQuantity: 0,
+            totalDozensAllStages: 0,
+            totalQuantityAllStages: 0,
+            recordsCount: 0,
+            destinationTotals: new Map(),
+            lineTotals: new Map()
+          }
+        ])
+      );
+      const sourceDeliveryItemMaps = new Map(PRODUCTION_SOURCE_SHEETS.map((sheet) => [sheet.title, new Map()]));
+      const lineOptions = new Set();
+      const colorOptions = new Set();
+      const sizeOptions = new Set();
+      const monthOptions = new Set();
+      const dayOptions = new Set();
       const monthlyDozensMap = new Map();
-      deliveryRows.forEach((row) => {
-        if (!row.date) return;
-        const key = String(row.date).slice(0, 7);
-        monthlyDozensMap.set(key, (monthlyDozensMap.get(key) || 0) + Number(row.dozens || 0));
+      const dailyDozensMap = new Map();
+      const filteredRecords = [];
+      let totalQuantity = 0;
+      let totalDozens = 0;
+      let overallTotalQuantity = 0;
+      let overallTotalDozens = 0;
+
+      rows.forEach((row) => {
+        if (from && row.date && row.date < from) return;
+        if (to && row.date && row.date > to) return;
+
+        overallTotalQuantity += Number(row.quantity || 0);
+        overallTotalDozens += Number(row.dozens || 0);
+
+        const sourceCard = sourceCardAccumulators.get(row.source);
+        if (sourceCard) {
+          sourceCard.totalDozensAllStages += Number(row.dozens || 0);
+          sourceCard.totalQuantityAllStages += Number(row.quantity || 0);
+          sourceCard.recordsCount += 1;
+          appendProductionMapTotal(sourceCard.destinationTotals, row.destination, row.dozens);
+          appendProductionMapTotal(sourceCard.lineTotals, row.lineName, row.dozens);
+          if (row.isDeliveryRow) {
+            sourceCard.totalDozens += Number(row.dozens || 0);
+            sourceCard.totalQuantity += Number(row.quantity || 0);
+          }
+        }
+
+        if (row.isDeliveryRow && (!month || row.dateMonth === month) && (!day || row.date === day)) {
+          if (row.dateMonth) appendProductionMapTotal(monthlyDozensMap, row.dateMonth, row.dozens);
+          if (row.date) appendProductionMapTotal(dailyDozensMap, row.date, row.dozens);
+        }
+
+        if (sourceFilter && row.source !== sourceFilter) return;
+
+        if (row.lineName) lineOptions.add(row.lineName);
+        if (row.color) colorOptions.add(row.color);
+        if (row.size) sizeOptions.add(row.size);
+        if (row.dateMonth) monthOptions.add(row.dateMonth);
+        if (row.date) dayOptions.add(row.date);
+
+        if (lineKey && row.lineNameKey !== lineKey) return;
+        if (colorKey && row.colorKey !== colorKey) return;
+        if (sizeKey && row.sizeKey !== sizeKey) return;
+        if (month && row.dateMonth !== month) return;
+        if (day && row.date !== day) return;
+        if (modelKey && !row.modelCodeKey.includes(modelKey)) return;
+
+        totalQuantity += Number(row.quantity || 0);
+        totalDozens += Number(row.dozens || 0);
+
+        if (row.isDeliveryRow) {
+          const itemMap = sourceDeliveryItemMaps.get(row.source);
+          if (itemMap) appendProductionMapTotal(itemMap, row.itemName, row.dozens);
+        }
+
+        if (recordsSource && row.source !== recordsSource) return;
+        if (recordsSearchKey && !String(row.searchKey || "").includes(recordsSearchKey)) return;
+        if (row.date) filteredRecords.push(row);
       });
 
-      const monthlyDeliveryDozens = Array.from(monthlyDozensMap.entries())
-        .map(([label, total]) => ({ label, total: Number(total.toFixed(2)) }))
-        .sort((a, b) => a.label.localeCompare(b.label));
+      const monthlyDeliveryDozens = mapTotalsToRowsSortedByLabel(monthlyDozensMap);
+      const dailyDeliveryDozens = mapTotalsToRowsSortedByLabel(dailyDozensMap).filter(
+        (row) => row.label && row.label !== "غير محدد"
+      );
 
-      const dailyDeliveryDozens = summarizeTop(deliveryRows, "date", "dozens", 366)
-        .filter((row) => row.label && row.label !== "غير محدد")
-        .sort((a, b) => a.label.localeCompare(b.label));
-
-      const sourceCards = PRODUCTION_SHEETS.filter((sheet) => sheet.gid).map((sheet) => {
-        const sourceRows = dateScoped.filter((row) => row.source === sheet.title);
-        const sourceDozens = sourceRows.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
-        const sourceQty = sourceRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
-        const deliveryAliases = deliveryAliasesForSource(sheet.key);
-        const deliveryDozens = sumProductionRowsByAliases(sourceRows, deliveryAliases, "dozens");
-        const deliveryQuantity = sumProductionRowsByAliases(sourceRows, deliveryAliases, "quantity");
+      const sourceCards = PRODUCTION_SOURCE_SHEETS.map((sheet) => {
+        const sourceCard = sourceCardAccumulators.get(sheet.title);
         return {
           source: sheet.title,
-          totalDozens: deliveryDozens,
-          totalQuantity: deliveryQuantity,
-          totalDozensAllStages: Number(sourceDozens.toFixed(2)),
-          totalQuantityAllStages: Number(sourceQty.toFixed(2)),
-          recordsCount: sourceRows.length,
-          destinationTotals: summarizeAll(sourceRows, "destination", "dozens"),
-          lineTotals: summarizeAll(sourceRows, "lineName", "dozens"),
-          topDestinations: summarizeTop(sourceRows, "destination", "dozens", 6),
-          topLines: summarizeTop(sourceRows, "lineName", "dozens", 4)
+          totalDozens: Number(sourceCard.totalDozens.toFixed(2)),
+          totalQuantity: Number(sourceCard.totalQuantity.toFixed(2)),
+          totalDozensAllStages: Number(sourceCard.totalDozensAllStages.toFixed(2)),
+          totalQuantityAllStages: Number(sourceCard.totalQuantityAllStages.toFixed(2)),
+          recordsCount: sourceCard.recordsCount,
+          destinationTotals: mapTotalsToRows(sourceCard.destinationTotals),
+          lineTotals: mapTotalsToRows(sourceCard.lineTotals),
+          topDestinations: mapTotalsToRows(sourceCard.destinationTotals, 6),
+          topLines: mapTotalsToRows(sourceCard.lineTotals, 4)
         };
       });
 
-      const deliveryItemsBySource = PRODUCTION_SHEETS.filter((sheet) => sheet.gid).reduce((acc, sheet) => {
-        const sourceDeliveryRows = filtered.filter(
-          (row) => row.source === sheet.title && rowMatchesProductionAliases(row, deliveryAliasesForSource(sheet.key))
-        );
-        acc[sheet.title] = summarizeTop(sourceDeliveryRows, "itemName", "dozens", 12).filter(
+      const deliveryItemsBySource = PRODUCTION_SOURCE_SHEETS.reduce((acc, sheet) => {
+        acc[sheet.title] = mapTotalsToRows(sourceDeliveryItemMaps.get(sheet.title) || new Map(), 12).filter(
           (row) => row.label && row.label !== "غير محدد"
         );
         return acc;
       }, {});
 
       const filterOptions = {
-        lines: Array.from(new Set(sourceScoped.map((row) => row.lineName).filter(Boolean))).sort((a, b) =>
-          a.localeCompare(b, "ar")
-        ),
-        colors: Array.from(new Set(sourceScoped.map((row) => row.color).filter(Boolean))).sort((a, b) =>
-          a.localeCompare(b, "ar")
-        ),
-        sizes: Array.from(new Set(sourceScoped.map((row) => row.size).filter(Boolean))).sort((a, b) =>
-          a.localeCompare(b, "ar")
-        ),
-        months: Array.from(new Set(sourceScoped.map((row) => String(row.date || "").slice(0, 7)).filter(Boolean))).sort(),
-        days: Array.from(new Set(sourceScoped.map((row) => row.date).filter(Boolean))).sort()
+        lines: Array.from(lineOptions).sort((a, b) => a.localeCompare(b, "ar")),
+        colors: Array.from(colorOptions).sort((a, b) => a.localeCompare(b, "ar")),
+        sizes: Array.from(sizeOptions).sort((a, b) => a.localeCompare(b, "ar")),
+        months: Array.from(monthOptions).sort(),
+        days: Array.from(dayOptions).sort()
       };
 
-      const recordsScoped = filtered.filter((row) => {
-        if (recordsSource && row.source !== recordsSource) return false;
-        if (!recordsSearchKey) return true;
-        return [
-          row.source,
-          row.lineName,
-          row.storyNo,
-          row.modelCode,
-          row.itemName,
-          row.color,
-          row.size,
-          row.destination
-        ]
-          .map((value) => normalizeArabicToken(value))
-          .some((value) => value.includes(recordsSearchKey));
+      const allRecords = filteredRecords.sort((a, b) => {
+        const dateDiff = String(b.date).localeCompare(String(a.date));
+        if (dateDiff !== 0) return dateDiff;
+        return Number(b.dozens || 0) - Number(a.dozens || 0);
       });
-
-      const allRecords = recordsScoped
-        .filter((row) => row.date)
-        .sort((a, b) => {
-          const dateDiff = String(b.date).localeCompare(String(a.date));
-          if (dateDiff !== 0) return dateDiff;
-          return Number(b.dozens || 0) - Number(a.dozens || 0);
-        });
       const recordsPageSize = 10;
       const recordsTotalPages = Math.max(1, Math.ceil(allRecords.length / recordsPageSize));
       const safeRecordsPage = Math.min(recordsPage, recordsTotalPages);
       const recordsRows = allRecords.slice((safeRecordsPage - 1) * recordsPageSize, safeRecordsPage * recordsPageSize);
 
       return {
-        selectedSource: selectedSource || "الكل",
+        selectedSource: selectedSource || ALL_PRODUCTION_SOURCE_TITLE,
         overallTotalQuantity: Number(overallTotalQuantity.toFixed(2)),
         overallTotalDozens: Number(overallTotalDozens.toFixed(2)),
         totalQuantity: Number(totalQuantity.toFixed(2)),
@@ -1716,7 +1761,7 @@ app.post("/api/production-dashboard", authRequired, async (req, res) => {
       const source = String(req.body.source || "").trim();
       const rows = await getProductionRows();
       const filtered = rows.filter((row) => {
-        if (source && source !== "الكل" && row.source !== source) return false;
+        if (source && source !== "Ø§Ù„ÙƒÙ„" && row.source !== source) return false;
         if (from && row.date && row.date < from) return false;
         if (to && row.date && row.date > to) return false;
         return true;
@@ -1725,7 +1770,7 @@ app.post("/api/production-dashboard", authRequired, async (req, res) => {
       const totalQuantity = filtered.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
       const totalDozens = filtered.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
       const dailyQuantity = summarizeTop(filtered, "date", "quantity", 120)
-        .filter((row) => row.label && row.label !== "غير محدد")
+        .filter((row) => row.label && row.label !== "ØºÙŠØ± Ù…Ø­Ø¯Ø¯")
         .sort((a, b) => a.label.localeCompare(b.label));
       const bySource = summarizeTop(filtered, "source", "quantity", 10);
       const topLines = summarizeTop(filtered, "lineName", "quantity", 8);
@@ -1791,7 +1836,7 @@ app.get("*", (_req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ─── schema & seed ────────────────────────────────────────────────────────────
+// â”€â”€â”€ schema & seed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function ensureSchema() {
   await pool.query(`
     create extension if not exists pgcrypto;
@@ -1948,16 +1993,16 @@ async function ensureSchema() {
   if ((customerCount[0] && customerCount[0].count) === 0) {
     await pool.query(
       `insert into customers (code,name,rep,category,sector,area,address,phone,email,is_active) values
-         ('C001','مؤسسة النور','أحمد','A','تجزئة','مدينة نصر','القاهرة','01000000001','c001@example.com',true),
-         ('C002','شركة الهدى','محمود','B','جملة','المعادي','القاهرة','01000000002','c002@example.com',true)`
+         ('C001','Ù…Ø¤Ø³Ø³Ø© Ø§Ù„Ù†ÙˆØ±','Ø£Ø­Ù…Ø¯','A','ØªØ¬Ø²Ø¦Ø©','Ù…Ø¯ÙŠÙ†Ø© Ù†ØµØ±','Ø§Ù„Ù‚Ø§Ù‡Ø±Ø©','01000000001','c001@example.com',true),
+         ('C002','Ø´Ø±ÙƒØ© Ø§Ù„Ù‡Ø¯Ù‰','Ù…Ø­Ù…ÙˆØ¯','B','Ø¬Ù…Ù„Ø©','Ø§Ù„Ù…Ø¹Ø§Ø¯ÙŠ','Ø§Ù„Ù‚Ø§Ù‡Ø±Ø©','01000000002','c002@example.com',true)`
     );
   }
   const itemCount = await query(`select count(*)::int as count from items`);
   if ((itemCount[0] && itemCount[0].count) === 0) {
     await pool.query(
       `insert into items (code,name,model,unit,description,price,is_active) values
-         ('I001','موتور 1 حصان','M-100','قطعة','موتور تشغيل صناعي',1500,true),
-         ('I002','مضخة مياه','P-200','قطعة','مضخة ضغط متوسطة',2200,true)`
+         ('I001','Ù…ÙˆØªÙˆØ± 1 Ø­ØµØ§Ù†','M-100','Ù‚Ø·Ø¹Ø©','Ù…ÙˆØªÙˆØ± ØªØ´ØºÙŠÙ„ ØµÙ†Ø§Ø¹ÙŠ',1500,true),
+         ('I002','Ù…Ø¶Ø®Ø© Ù…ÙŠØ§Ù‡','P-200','Ù‚Ø·Ø¹Ø©','Ù…Ø¶Ø®Ø© Ø¶ØºØ· Ù…ØªÙˆØ³Ø·Ø©',2200,true)`
     );
   }
 }
@@ -1972,3 +2017,6 @@ ensureSchema()
     console.error("Failed to initialize schema:", error);
     process.exit(1);
   });
+
+
+
