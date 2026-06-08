@@ -63,10 +63,11 @@ textarea {
 .ambient {
   position: fixed;
   border-radius: 50%;
-  filter: blur(100px);
+  filter: blur(80px);
   opacity: 0.34;
   pointer-events: none;
   z-index: 0;
+  will-change: transform;
 }
 
 .ambient-a {
@@ -105,8 +106,12 @@ textarea {
 .details-dialog {
   background: var(--glass);
   border: 1px solid var(--line);
-  backdrop-filter: blur(20px);
   box-shadow: var(--shadow);
+}
+
+.glass,
+.details-dialog {
+  backdrop-filter: blur(20px);
 }
 
 .auth-shell {

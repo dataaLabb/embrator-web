@@ -901,22 +901,22 @@
       state.orderFilters.sector = "";
       state.orderFilters.area = "";
       state.orderFilters.customerCode = "";
-      renderAllFilterGroups();
+      renderOrderCustomerFilters();
     });
     bindFilterChange(ui.orderCustomerFilters, "order-sector", (value) => {
       state.orderFilters.sector = value;
       state.orderFilters.area = "";
       state.orderFilters.customerCode = "";
-      renderAllFilterGroups();
+      renderOrderCustomerFilters();
     });
     bindFilterChange(ui.orderCustomerFilters, "order-area", (value) => {
       state.orderFilters.area = value;
       state.orderFilters.customerCode = "";
-      renderAllFilterGroups();
+      renderOrderCustomerFilters();
     });
     bindFilterChange(ui.orderCustomerFilters, "order-customer", (value) => {
       state.orderFilters.customerCode = value;
-      renderAllFilterGroups();
+      renderOrderCustomerFilters();
     });
   }
 
@@ -953,25 +953,25 @@
       filters.sector = "";
       filters.area = "";
       filters.customerCode = "";
-      renderAllFilterGroups();
+      renderCustomerFilters(host, filters, prefix);
     });
     bindFilterChange(host, prefix + "-category", (value) => {
       filters.category = value;
       filters.sector = "";
       filters.area = "";
       filters.customerCode = "";
-      renderAllFilterGroups();
+      renderCustomerFilters(host, filters, prefix);
     });
     bindFilterChange(host, prefix + "-sector", (value) => {
       filters.sector = value;
       filters.area = "";
       filters.customerCode = "";
-      renderAllFilterGroups();
+      renderCustomerFilters(host, filters, prefix);
     });
     bindFilterChange(host, prefix + "-area", (value) => {
       filters.area = value;
       filters.customerCode = "";
-      renderAllFilterGroups();
+      renderCustomerFilters(host, filters, prefix);
     });
     bindFilterChange(host, prefix + "-customer", (value) => {
       filters.customerCode = value;
@@ -1129,7 +1129,7 @@
       state.visit = emptyFilters();
       state.locations.visit = emptyLocation();
       await loadHomeSummary();
-      renderAllFilterGroups();
+      renderCustomerFilters(ui.visitFilters, state.visit, "visit");
       renderLocationSummary("visit");
       renderHomeSummary();
       notify("تم تسجيل الزيارة بنجاح.", "success");
@@ -1192,7 +1192,7 @@
       state.locations.collection = emptyLocation();
       ui.collectionForm.reset();
       await loadHomeSummary();
-      renderAllFilterGroups();
+      renderCustomerFilters(ui.collectionFilters, state.collection, "collection");
       renderLocationSummary("collection");
       renderHomeSummary();
       syncTransferField();
@@ -1604,7 +1604,7 @@
       )
       .join("");
 
-    Array.from(document.querySelectorAll(".summary-view")).forEach((button) => {
+    Array.from(ui.ordersSummaryTable.querySelectorAll(".summary-view")).forEach((button) => {
       button.addEventListener("click", function () {
         state.ordersRepFilter = button.dataset.rep;
         ui.ordersRepFilter.value = state.ordersRepFilter;
@@ -1645,7 +1645,7 @@
       )
       .join("");
 
-    Array.from(document.querySelectorAll(".order-details")).forEach((button) => {
+    Array.from(ui.ordersTable.querySelectorAll(".order-details")).forEach((button) => {
       button.addEventListener("click", function () {
         showOrderDetails(button.dataset.code);
       });
@@ -1663,12 +1663,12 @@
             <button class="btn btn-soft order-delete" data-code="${escapeHtml(order.order_code || "")}" type="button">Delete</button>`
         );
       });
-      Array.from(document.querySelectorAll(".order-edit")).forEach((button) => {
+      Array.from(ui.ordersTable.querySelectorAll(".order-edit")).forEach((button) => {
         button.addEventListener("click", function () {
           loadOrderForEditing(button.dataset.code);
         });
       });
-      Array.from(document.querySelectorAll(".order-delete")).forEach((button) => {
+      Array.from(ui.ordersTable.querySelectorAll(".order-delete")).forEach((button) => {
         button.addEventListener("click", function () {
           deleteOrder(button.dataset.code);
         });
@@ -1710,7 +1710,7 @@
       };
       ui.orderNotes.value = order.notes || "";
       state.lastCompletedOrder = null;
-      renderAllFilterGroups();
+      renderOrderCustomerFilters();
       renderOrderLines();
       renderLocationSummary("order");
       setPage("orders-entry");
@@ -1743,11 +1743,8 @@
       notify("No orders to export.", "error");
       return;
     }
-    if (!window.XLSX) {
-      notify("Excel export library is not loaded.", "error");
-      return;
-    }
     setBusy(ui.exportOrders, true, "Exporting...");
+    try { await loadXlsx(); } catch (e) { notify(e.message, "error"); setBusy(ui.exportOrders, false, "تصدير Excel"); return; }
     try {
       const details = await Promise.all(
         rows.map((order) =>
@@ -2002,7 +1999,7 @@
       )
       .join("");
 
-    Array.from(document.querySelectorAll(".customer-edit")).forEach((button) => {
+    Array.from(ui.customersTable.querySelectorAll(".customer-edit")).forEach((button) => {
       button.addEventListener("click", function () {
         fillCustomerEditor(button.dataset.code);
       });
@@ -2306,7 +2303,7 @@
       )
       .join("");
 
-    Array.from(document.querySelectorAll(".item-edit")).forEach((button) => {
+    Array.from(ui.itemsTable.querySelectorAll(".item-edit")).forEach((button) => {
       button.addEventListener("click", function () {
         fillItemEditor(button.dataset.code);
       });
@@ -4384,6 +4381,7 @@ function renderScoreList(rows, suffix, formatterFn) {
       notify("لا توجد بيانات لتصديرها.", "error");
       return;
     }
+    try { await loadXlsx(); } catch (e) { notify(e.message, "error"); return; }
 
     let rows = currentPayload.movementRows || [];
     try {
@@ -4765,6 +4763,20 @@ function renderScoreList(rows, suffix, formatterFn) {
   function mapSeries(labels, rows) {
     const map = new Map((rows || []).map((row) => [row.day, Number(row.total || 0)]));
     return labels.map((label) => map.get(label) || 0);
+  }
+
+  let xlsxLoadPromise = null;
+  function loadXlsx() {
+    if (window.XLSX) return Promise.resolve();
+    if (xlsxLoadPromise) return xlsxLoadPromise;
+    xlsxLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js";
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("تعذر تحميل مكتبة Excel. تحقق من الاتصال."));
+      document.head.appendChild(script);
+    });
+    return xlsxLoadPromise;
   }
 
   function setBusy(button, busy, busyLabel) {
