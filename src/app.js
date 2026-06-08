@@ -2909,28 +2909,28 @@ function renderProductionSourceColumnV2(card) {
   function renderProductionOverviewFlowV2(payload) {
     const sourceCards = Array.isArray(payload.sourceCards) ? payload.sourceCards : [];
     const cardsBySource = new Map(sourceCards.map((card) => [card.source, card]));
-    const readyCard = cardsBySource.get("Ø§Ù„Ø¬Ø§Ù‡Ø²") || emptyProductionSourceCardV2("Ø§Ù„Ø¬Ø§Ù‡Ø²");
-    const menCard = cardsBySource.get("Ø¯Ø§Ø®Ù„ÙŠ") || emptyProductionSourceCardV2("Ø¯Ø§Ø®Ù„ÙŠ");
-    const wingsCard = cardsBySource.get("ÙˆÙŠÙ†ÙƒØ²") || emptyProductionSourceCardV2("ÙˆÙŠÙ†ÙƒØ²");
-    const selectedSource = payload.selectedSource && payload.selectedSource !== "Ø§Ù„ÙƒÙ„" ? payload.selectedSource : "";
+    const readyCard = cardsBySource.get("الجاهز") || emptyProductionSourceCardV2("الجاهز");
+    const menCard = cardsBySource.get("داخلي") || emptyProductionSourceCardV2("داخلي");
+    const wingsCard = cardsBySource.get("وينكز") || emptyProductionSourceCardV2("وينكز");
+    const selectedSource = payload.selectedSource && payload.selectedSource !== "الكل" ? payload.selectedSource : "";
     const internalTotal = Number((menCard.totalDozens || 0) + (wingsCard.totalDozens || 0));
-    const displayTotal = selectedSource === "Ø§Ù„Ø¬Ø§Ù‡Ø²"
+    const displayTotal = selectedSource === "الجاهز"
       ? Number(readyCard.totalDozens || 0)
-      : selectedSource === "ÙˆÙŠÙ†ÙƒØ²"
+      : selectedSource === "وينكز"
         ? Number(wingsCard.totalDozens || 0)
-        : selectedSource === "Ø¯Ø§Ø®Ù„ÙŠ"
+        : selectedSource === "داخلي"
           ? internalTotal
           : Number((readyCard.totalDozens || 0) + internalTotal);
 
     if (ui.productionHeadlineTitle) {
       ui.productionHeadlineTitle.textContent = selectedSource
-        ? `Ø¥Ù†ØªØ§Ø¬ ${selectedSource}`
-        : "Ø¥Ù†ØªØ§Ø¬ Ù…Ø¬Ù…ÙˆØ¹Ø© Ø³Ù…Ø§Ù‚ÙŠØ© Ø¥Ø®ÙˆØ§Ù†";
+        ? `إنتاج ${selectedSource}`
+        : "إنتاج مجموعة ساقية إخوان";
     }
     if (ui.productionHeadlineCaption) {
       ui.productionHeadlineCaption.textContent = selectedSource
-        ? `Ø§Ù„ØªØ¯ÙÙ‚ Ø§Ù„Ø­Ø§Ù„ÙŠ Ù…Ø±ØªØ¨ Ø¨Ø§Ù„Ø¯Ø³ØªØ© Ù„Ù…Ø³Ø§Ø± ${selectedSource}.`
-        : "Ø§Ù„ØªØ¯ÙÙ‚ Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ Ù…Ø±ØªØ¨ Ø¨Ø§Ù„Ø¯Ø³ØªØ© ÙˆÙ…Ø¨Ù†ÙŠ Ø¹Ù„Ù‰ Ù†ÙØ³ ØªØ±ØªÙŠØ¨ Ø®Ø·ÙˆØ· Ø§Ù„Ø¥Ù†ØªØ§Ø¬.";
+        ? `التدفق الحالي مرتب بالدستة لمسار ${selectedSource}.`
+        : "التدفق الرئيسي مرتب بالدستة ومبني على نفس ترتيب خطوط الإنتاج.";
     }
     if (ui.productionOverallTotal) {
       ui.productionOverallTotal.textContent = formatRoundedNumber(displayTotal || 0);
@@ -3104,66 +3104,66 @@ function renderProductionSourceColumnV2(card) {
 
   function renderProductionFlowBoardMarkupV2(context) {
     const readySteps = [
-      { label: "Ø§Ù„Ù‚Øµ Ø§Ù„Ø¬Ø§Ù‡Ø²", aliases: ["Ø§Ù„Ù‚Øµ Ø§Ù„Ø¬Ø§Ù‡Ø²", "Ù‚Øµ Ø§Ù„Ø¬Ø§Ù‡Ø²"] },
-      { label: "ÙƒÙ†ØªØ±ÙˆÙ„", aliases: ["ÙƒÙ†ØªØ±ÙˆÙ„", "Ø§Ù„ÙƒÙ†ØªØ±ÙˆÙ„"] },
-      { label: "ØªØ´ØºÙŠÙ„ Ø§Ù„Ø¨Ù†Ø·Ù„ÙˆÙ†", aliases: ["ØªØ´ØºÙŠÙ„ Ø§Ù„Ø¨Ù†Ø·Ù„ÙˆÙ†"] },
-      { label: "ØªØ´ØºÙŠÙ„ Ø§Ù„ØªÙŠÙˆØ¨", aliases: ["ØªØ´ØºÙŠÙ„ Ø§Ù„ØªÙŠÙˆØ¨"] },
-      { label: "ÙØ±Ø² Ø§Ù„Ø¬Ø§Ù‡Ø²", aliases: ["ÙØ±Ø² Ø§Ù„Ø¬Ø§Ù‡Ø²", "Ø§Ù„ÙØ±Ø²"] },
-      { label: "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¬Ø§Ù‡Ø²", aliases: ["ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¬Ø§Ù‡Ø²"] }
+      { label: "القص الجاهز", aliases: ["القص الجاهز", "قص الجاهز"] },
+      { label: "كنترول الجاهز", aliases: ["كنترول الجاهز", "الكنترول الجاهز", "كنترول"] },
+      { label: "تشغيل بنطلون", aliases: ["تشغيل بنطلون", "تشغيل البنطلون"] },
+      { label: "تشغيل التوب", aliases: ["تشغيل التوب", "تشغيل تيوب"] },
+      { label: "فرز الجاهز", aliases: ["فرز الجاهز", "الفرز الجاهز"] },
+      { label: "تسليمات الجاهز", aliases: ["تسليمات الجاهز"] }
     ];
     const wingsSteps = [
-      { label: "Ø§Ù„Ù‚Øµ", aliases: ["Ø§Ù„Ù‚Øµ"] },
-      { label: "ÙƒÙ†ØªØ±ÙˆÙ„", aliases: ["ÙƒÙ†ØªØ±ÙˆÙ„", "Ø§Ù„ÙƒÙ†ØªØ±ÙˆÙ„"] },
-      { label: "Ø®Ø· Ø§Ù„Ø¨ÙŠØ¨ÙŠ", aliases: ["Ø®Ø· Ø§Ù„Ø¨ÙŠØ¨ÙŠ", "Ø®Ø· Ø§Ù„Ø¨ÙŠØªÙŠ"] },
-      { label: "Ù‚Ù†Ø§Ù„Ø© ÙˆÙŠÙ†ÙƒØ²", aliases: ["Ù‚Ù†Ø§Ù„Ø© ÙˆÙŠÙ†ÙƒØ²", "ÙØªØ§Ù„Ø© ÙˆÙŠÙ†ÙƒØ²", "Ù‚Ù†Ø§Ù†Ù‡ ÙˆÙŠÙ†ÙƒØ²"] },
-      { label: "Ø´ÙˆÙŠØª ÙˆÙŠÙ†ÙƒØ²", aliases: ["Ø´ÙˆÙŠØª ÙˆÙŠÙ†ÙƒØ²", "Ø´ÙˆÙŠØª ÙˆÙŠÙ†ÙƒØ²"] },
-      { label: "Ø§Ù„ÙØ±Ø²", aliases: ["Ø§Ù„ÙØ±Ø²"] },
-      { label: "ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒØ²", aliases: ["ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒØ²"] }
+      { label: "قص وينكيز", aliases: ["قص وينكيز", "قص وينكز", "القص", "قص"] },
+      { label: "كنترول وينكيز", aliases: ["كنترول وينكيز", "كنترول وينكز", "الكنترول وينكيز"] },
+      { label: "خط البيبي", aliases: ["خط البيبي"] },
+      { label: "تشغيل فانلة وينكيز", aliases: ["تشغيل فانلة وينكيز", "تشغيل فانلة وينكز", "فانلة وينكر", "فانلة وينكيز"] },
+      { label: "تشغيل شورت وينكيز", aliases: ["تشغيل شورت وينكيز", "تشغيل شورت وينكز", "شورت وينكر", "شورت وينكيز"] },
+      { label: "فرز وينكيز", aliases: ["فرز وينكيز", "فرز وينكز", "الفرز"] },
+      { label: "تسليمات وينكز", aliases: ["تسليمات وينكز", "تسليمات وينكيز"] }
     ];
     const menMainSteps = [
-      { label: "Ø§Ù„Ù‚Øµ", aliases: ["Ø§Ù„Ù‚Øµ"] },
-      { label: "Ø§Ù„ÙƒÙ†ØªØ±ÙˆÙ„", aliases: ["Ø§Ù„ÙƒÙ†ØªØ±ÙˆÙ„", "ÙƒÙ†ØªØ±ÙˆÙ„"] },
-      { label: "ØªØ´ØºÙŠÙ„ Ø´ÙˆÙŠØª", aliases: ["ØªØ´ØºÙŠÙ„ Ø´ÙˆÙŠØª", "ØªØ´ØºÙŠÙ„ Ø´ÙˆØ±Øª", "ØªØ´ØºÙŠÙ„ Ø´ÙˆØ¨Øª"] },
-      { label: "Ø³ÙŠÙˆØ±", aliases: ["Ø³ÙŠÙˆØ±"] },
-      { label: "Ø³ÙŠÙˆØ± Ù…ØªÙ†ÙˆØ¹", aliases: ["Ø³ÙŠÙˆØ± Ù…ØªÙ†ÙˆØ¹"] },
-      { label: "Ø¬ÙˆÙƒØ± Ø¨ÙŠØ±Ø§ÙŠØ±", aliases: ["Ø¬ÙˆÙƒØ± Ø¨ÙŠØ±Ø§ÙŠØ±", "Ø¬ÙˆÙƒØ±", "Ø¨ÙŠØ±Ø§ÙŠØ±"] },
-      { label: "Ø³Ù„ÙŠØ¨", aliases: ["Ø³Ù„ÙŠØ¨"] },
-      { label: "Ù‡Ø§Ù Ø´ÙˆÙŠØª", aliases: ["Ù‡Ø§Ù Ø´ÙˆÙŠØª", "Ù‡Ø§Ù Ø´ÙˆØ±Øª"] },
-      { label: "Ù‡ÙˆØª Ù…Ø§Ù† ÙØ§Ù†Ù„Ø©", aliases: ["Ù‡ÙˆØª Ù…Ø§Ù† ÙØ§Ù†Ù„Ø©", "Ù‡ÙˆØª Ù…Ø§Ù† Ù‚Ù†Ø§Ù„Ø©"] },
-      { label: "Ø§Ù„ÙØ±Ø²", aliases: ["Ø§Ù„ÙØ±Ø²"] },
-      { label: "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠ", aliases: ["ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠ"] }
+      { label: "القص", aliases: ["القص", "قص"] },
+      { label: "الكنترول", aliases: ["الكنترول", "كنترول"] },
+      { label: "تشغيل الشورت", aliases: ["تشغيل الشورت", "تشغيل شورت"] },
+      { label: "سبور", aliases: ["سبور", "سنيور"] },
+      { label: "سبور متنوع", aliases: ["سبور متنوع", "سنيور متنوع"] },
+      { label: "بوكسر بزراير", aliases: ["بوكسر بزراير", "بوكسر بزرارير", "بوكسر"] },
+      { label: "سليب", aliases: ["سليب"] },
+      { label: "هاف شورت أورليه", aliases: ["هاف شورت أورليه", "هاف شورت اولية", "هاف شورت أولية"] },
+      { label: "هوت مان فانلة", aliases: ["هوت مان فانلة"] },
+      { label: "الفرز", aliases: ["الفرز", "فرز"] },
+      { label: "انتاج تسليمات", aliases: ["انتاج تسليمات", "تسليمات الداخلي", "تسليمات داخلي"] }
     ];
     const menSideSteps = [
-      { label: "Ù†Øµ ÙƒÙ…", aliases: ["Ù†Øµ ÙƒÙ…"] },
-      { label: "Ù†Øµ ÙƒÙ… Ù…ØªÙØ±Ø¹", aliases: ["Ù†Øµ ÙƒÙ… Ù…ØªÙØ±Ø¹"] },
-      { label: "Ù‡ÙˆØª Ù…Ø§Ù† ÙƒÙ„Ø³ÙˆÙ†", aliases: ["Ù‡ÙˆØª Ù…Ø§Ù† ÙƒÙ„Ø³ÙˆÙ†", "Ù‡ÙˆØª Ù…Ø§Ù† ÙƒÙ„ÙˆØª"] },
-      { label: "Ù‡Ø§Ù Ø´ÙˆÙŠØª Ø´ÙˆØ±ØªÙŠÙ†", aliases: ["Ù‡Ø§Ù Ø´ÙˆÙŠØª Ø´ÙˆØ±ØªÙŠÙ†", "Ù‡Ø§Ù Ø´ÙˆØ±Øª Ø´ÙˆØ±ØªÙŠÙ†"] }
+      { label: "نص كم", aliases: ["نص كم"] },
+      { label: "نص كم متنوع", aliases: ["نص كم متنوع"] },
+      { label: "هوت مان كلسون", aliases: ["هوت مان كلسون"] },
+      { label: "هاف شورت شوتس", aliases: ["هاف شورت شوتس", "هاف شورت شتوي"] }
     ];
 
     const allView = !context.selectedSource;
-    const showReady = allView || context.selectedSource === "Ø§Ù„Ø¬Ø§Ù‡Ø²";
-    const showInternal = allView || context.selectedSource === "Ø¯Ø§Ø®Ù„ÙŠ";
-    const showWingsOnly = context.selectedSource === "ÙˆÙŠÙ†ÙƒØ²";
+    const showReady = allView || context.selectedSource === "الجاهز";
+    const showInternal = allView || context.selectedSource === "داخلي";
+    const showWingsOnly = context.selectedSource === "وينكز";
 
     const readyBlock = showReady
       ? `
-        <section class="production-lane ready-lane" data-production-source-card="Ø§Ù„Ø¬Ø§Ù‡Ø²">
-          <div class="production-lane-total">${productionFlowStepMarkupV2("Ø§Ù„Ø¬Ø§Ù‡Ø²", context.readyCard.totalDozens || 0, "lane-total")}</div>
+        <section class="production-lane ready-lane" data-production-source-card="الجاهز">
+          <div class="production-lane-total">${productionFlowStepMarkupV2("الجاهز", context.readyCard.totalDozens || 0, "lane-total")}</div>
           ${renderProductionFlowChainMarkupV2(context.readyCard, readySteps, "ready-chain")}
         </section>
       `
       : "";
 
     const wingsBlock = `
-      <section class="production-sub-lane wings-lane" data-production-source-card="ÙˆÙŠÙ†ÙƒØ²">
-        <div class="production-lane-total">${productionFlowStepMarkupV2("ÙˆÙŠÙ†ÙƒØ²", context.wingsCard.totalDozens || 0, "lane-total")}</div>
+      <section class="production-sub-lane wings-lane" data-production-source-card="وينكز">
+        <div class="production-lane-total">${productionFlowStepMarkupV2("وينكز", context.wingsCard.totalDozens || 0, "lane-total")}</div>
         ${renderProductionFlowChainMarkupV2(context.wingsCard, wingsSteps, "wings-chain")}
       </section>
     `;
 
     const menBlock = `
-      <section class="production-sub-lane men-lane" data-production-source-card="Ø¯Ø§Ø®Ù„ÙŠ">
-        <div class="production-lane-total">${productionFlowStepMarkupV2("Ø±Ø¬Ø§Ù„ÙŠ", context.menCard.totalDozens || 0, "lane-total")}</div>
+      <section class="production-sub-lane men-lane" data-production-source-card="داخلي">
+        <div class="production-lane-total">${productionFlowStepMarkupV2("رجالي", context.menCard.totalDozens || 0, "lane-total")}</div>
         <div class="production-men-grid">
           <div class="production-men-side side-left">
             ${menSideSteps.slice(0, 2).map((step) => productionFlowStepMarkupV2(step.label, productionFlowValueV2(context.menCard, step.aliases), "minor-node")).join("")}
@@ -3182,8 +3182,8 @@ function renderProductionSourceColumnV2(card) {
 
     const internalBlock = showInternal
       ? `
-        <section class="production-internal-group" data-production-source-card="Ø¯Ø§Ø®Ù„ÙŠ">
-          <div class="production-internal-total">${productionFlowStepMarkupV2("Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠ", context.internalTotal || 0, "lane-total internal-total")}</div>
+        <section class="production-internal-group" data-production-source-card="داخلي">
+          <div class="production-internal-total">${productionFlowStepMarkupV2("الداخلي", context.internalTotal || 0, "lane-total internal-total")}</div>
           <div class="production-internal-split">
             ${wingsBlock}
             ${menBlock}

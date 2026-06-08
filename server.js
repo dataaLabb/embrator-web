@@ -258,10 +258,10 @@ function isAdminRequest(req) {
 
 const PRODUCTION_SHEET_ID = process.env.PRODUCTION_SHEET_ID || "1T4aYUQn6MRme1LfKe6ryd4YbJMaEN6VNobnwjM9yEZo";
 const PRODUCTION_SHEETS = [
-  { key: "all", title: "Ø§Ù„ÙƒÙ„", gid: null },
-  { key: "ready", title: "Ø§Ù„Ø¬Ø§Ù‡Ø²", gid: "0" },
-  { key: "internal", title: "Ø¯Ø§Ø®Ù„ÙŠ", gid: "1577931770" },
-  { key: "wings", title: "ÙˆÙŠÙ†ÙƒØ²", gid: "221278991" }
+  { key: "all", title: "الكل", gid: null },
+  { key: "ready", title: "الجاهز", gid: "0" },
+  { key: "internal", title: "داخلي", gid: "1577931770" },
+  { key: "wings", title: "وينكز", gid: "221278991" }
 ];
 const ALL_PRODUCTION_SOURCE_TITLE = PRODUCTION_SHEETS[0].title;
 const PRODUCTION_SOURCE_SHEETS = PRODUCTION_SHEETS.filter((sheet) => sheet.gid);
@@ -313,9 +313,9 @@ function normalizeHeader(value) {
 
 function normalizeArabicToken(value) {
   return normalizeHeader(value)
-    .replace(/[Ø£Ø¥Ø¢]/g, "Ø§")
-    .replace(/Ù‰/g, "ÙŠ")
-    .replace(/Ø©/g, "Ù‡")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
     .replace(/[()]/g, "")
     .replace(/[^\p{L}\p{N}\s]/gu, "")
     .replace(/\s+/g, " ")
@@ -329,7 +329,7 @@ function compactArabicToken(value) {
 
 function softArabicToken(value) {
   return compactArabicToken(value)
-    .replace(/[Ø§ÙŠÙˆÙ‡Ø©]/g, "")
+    .replace(/[ايوهة]/g, "")
     .replace(/(.)\1+/g, "$1");
 }
 
@@ -385,10 +385,10 @@ function sumProductionRowsByAliases(rows, aliases, valueKey) {
 }
 
 function deliveryAliasesForSource(sheetKey) {
-  if (sheetKey === "ready") return ["ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¬Ø§Ù‡Ø²", "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø¬Ø§Ù‡Ø²"];
-  if (sheetKey === "internal") return ["Ø§Ù†ØªØ§Ø¬ ØªØ³Ù„ÙŠÙ…Ø§Øª", "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠ", "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø¯Ø§Ø®Ù„ÙŠ"];
+  if (sheetKey === "ready") return ["تسليمات الجاهز", "تسليمات جاهز"];
+  if (sheetKey === "internal") return ["انتاج تسليمات", "تسليمات الداخلي", "تسليمات داخلي"];
   if (sheetKey === "wings") {
-    return ["ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒØ²", "ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒÙŠØ²", "ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆÙŠÙ†ÙƒØ±", "ØªØ³Ù„ÙŠÙ…Ø§Øª Ø±ÙŠÙ†ÙƒÙŠØ²"];
+    return ["تسليمات وينكز", "تسليمات وينكيز", "تسليمات وينكر", "تسليمات رينكيز"];
   }
   return [];
 }
@@ -417,7 +417,7 @@ function toIsoDate(value) {
 }
 
 function appendProductionMapTotal(map, label, value) {
-  const safeLabel = String(label || "").trim() || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯";
+  const safeLabel = String(label || "").trim() || "غير محدد";
   map.set(safeLabel, (map.get(safeLabel) || 0) + Number(value || 0));
 }
 
@@ -438,7 +438,7 @@ async function fetchProductionSheetRows(sheet) {
   const url = `https://docs.google.com/spreadsheets/d/${PRODUCTION_SHEET_ID}/export?format=csv&gid=${sheet.gid}`;
   const response = await fetch(url, { headers: { "User-Agent": "embrator-web/1.0" } });
   if (!response.ok) {
-    throw new Error(`ØªØ¹Ø°Ø± Ù‚Ø±Ø§Ø¡Ø© Ø´ÙŠØª Ø§Ù„Ø¥Ù†ØªØ§Ø¬: ${sheet.title}`);
+    throw new Error(`تعذر قراءة شيت الإنتاج: ${sheet.title}`);
   }
   const csv = await response.text();
   const rows = parseCsvRows(csv);
@@ -450,18 +450,18 @@ async function fetchProductionSheetRows(sheet) {
   };
 
   const indexes = {
-    lineNumber: indexOfAny(["Ø±Ù‚Ù… Ø§Ù„Ø®Ø·"]),
-    lineName: indexOfAny(["Ø§Ø³Ù… Ø§Ù„Ø®Ø·"]),
-    date: indexOfAny(["Ø§Ù„ØªØ§Ø±ÙŠØ®"]),
-    storyNo: indexOfAny(["Ø±Ù‚Ù… Ø§Ù„Ù‚ØµØ©", "Ø±Ù‚Ù… Ø§Ù„Ù‚ØµÙ‡"]),
-    modelCode: indexOfAny(["ÙƒÙˆØ¯ Ø§Ù„Ù…ÙˆØ¯ÙŠÙ„", "ÙƒÙˆØ¯ Ø§Ù„Ù…ÙˆÙŠÙ„", "ÙƒÙˆ Ø§Ù„Ù…ÙˆÙŠÙ„"]),
-    workOrder: indexOfAny(["Ø§Ù…Ø± Ø§Ù„Ø´ØºÙ„ (Ø¯)", "Ø§Ù…Ø± Ø§Ù„Ø´ØºÙ„ ()"]),
-    itemName: indexOfAny(["Ø§Ù„ØµÙ†Ù"]),
-    size: indexOfAny(["Ø§Ù„Ù…Ù‚Ø§Ø³"]),
-    color: indexOfAny(["Ø§Ù„Ù„ÙˆÙ†"]),
-    quantity: indexOfAny(["Ø§Ù„ÙƒÙ…ÙŠØ©", "Ø§Ù„ÙƒÙ…ÙŠÙ‡"]),
-    dozens: indexOfAny(["Ø§Ù„ÙƒÙ…ÙŠØ© Ø¨Ø§Ù„Ø¯Ø³ØªØ©", "Ø§Ù„ÙƒÙ…ÙŠØ© Ø¨Ø§Ù„Ø³ØªØ©", "Ø§Ù„ÙƒÙ…ÙŠÙ‡ Ø¨Ø§Ù„Ø³ØªÙ‡"]),
-    destination: indexOfAny(["Ù…ÙˆØ¬Ù‡ Ø§Ù„ÙŠ"])
+    lineNumber: indexOfAny(["رقم الخط"]),
+    lineName: indexOfAny(["اسم الخط"]),
+    date: indexOfAny(["التاريخ"]),
+    storyNo: indexOfAny(["رقم القصة", "رقم القصه"]),
+    modelCode: indexOfAny(["كود الموديل", "كود المويل", "كو المويل"]),
+    workOrder: indexOfAny(["امر الشغل (د)", "امر الشغل ()"]),
+    itemName: indexOfAny(["الصنف"]),
+    size: indexOfAny(["المقاس"]),
+    color: indexOfAny(["اللون"]),
+    quantity: indexOfAny(["الكمية", "الكميه"]),
+    dozens: indexOfAny(["الكمية بالدستة", "الكمية بالسّتة", "الكميه بالسته", "الكمية بالستة"]),
+    destination: indexOfAny(["موجه الي"])
   };
 
   const deliveryAliases = deliveryAliasesForSource(sheet.key);
@@ -1761,7 +1761,7 @@ app.post("/api/production-dashboard", authRequired, async (req, res) => {
       const source = String(req.body.source || "").trim();
       const rows = await getProductionRows();
       const filtered = rows.filter((row) => {
-        if (source && source !== "Ø§Ù„ÙƒÙ„" && row.source !== source) return false;
+        if (source && source !== "الكل" && row.source !== source) return false;
         if (from && row.date && row.date < from) return false;
         if (to && row.date && row.date > to) return false;
         return true;
@@ -1770,7 +1770,7 @@ app.post("/api/production-dashboard", authRequired, async (req, res) => {
       const totalQuantity = filtered.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
       const totalDozens = filtered.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
       const dailyQuantity = summarizeTop(filtered, "date", "quantity", 120)
-        .filter((row) => row.label && row.label !== "ØºÙŠØ± Ù…Ø­Ø¯Ø¯")
+        .filter((row) => row.label && row.label !== "غير محدد")
         .sort((a, b) => a.label.localeCompare(b.label));
       const bySource = summarizeTop(filtered, "source", "quantity", 10);
       const topLines = summarizeTop(filtered, "lineName", "quantity", 8);
