@@ -1009,7 +1009,7 @@
           <section class="glass page-section hidden" data-page="production-dashboard">
             <div class="section-head">
               <h2>لوحة الإنتاج</h2>
-              <p>لوحة أولية خفيفة تقرأ بيانات الإنتاج من Google Sheets وتعرض مؤشرات يومية حسب الخطوط والموديلات والوجهات.</p>
+              <p>لوحة تنفيذية تركز على تسليمات الفروع الثلاثة بالدستة، مع مقارنة أصناف وسجل إنتاج كامل سريع وسهل التصفح.</p>
             </div>
 
             <div class="filters-grid">
@@ -1082,104 +1082,74 @@
                 </select>
               </label>
               <label class="field">
+                <span>اليوم</span>
+                <select id="production-day-filter">
+                  <option value="">الكل</option>
+                </select>
+              </label>
+              <label class="field">
                 <span>بحث بالموديل</span>
                 <input id="production-model-filter" type="text" placeholder="مثال: 3538" />
               </label>
             </div>
 
-            <div id="production-metrics" class="metrics-grid metrics-grid-wide"></div>
-
             <div class="dashboard-layout field-layout production-layout">
               <section class="sub-card chart-card chart-card-hero">
                 <div class="card-inline-head">
                   <div>
-                    <h3>الإنتاج اليومي</h3>
-                    <p class="muted">إجمالي الكمية حسب التاريخ داخل الفترة المختارة.</p>
+                    <h3>إجمالي التسليمات الشهري</h3>
+                    <p class="muted">إجمالي تسليمات الجاهز والداخلي ووينكز بالدستة عبر الشهور.</p>
+                  </div>
+                </div>
+                <canvas id="production-monthly-chart" height="116"></canvas>
+              </section>
+
+              <section class="sub-card chart-card chart-card-hero">
+                <div class="card-inline-head">
+                  <div>
+                    <h3>إجمالي التسليمات اليومي</h3>
+                    <p class="muted">إجمالي تسليمات الفروع الثلاثة بالدستة عبر الأيام داخل الفترة المختارة.</p>
                   </div>
                 </div>
                 <canvas id="production-daily-chart" height="116"></canvas>
               </section>
-
-              <section class="sub-card chart-card chart-card-donut">
-                <div class="card-inline-head">
-                  <div>
-                    <h3>توزيع الإنتاج حسب التشغيل</h3>
-                    <p class="muted">الجاهز، داخلي، ووينكز حسب الكمية.</p>
-                  </div>
-                </div>
-                <canvas id="production-source-chart" height="116"></canvas>
-              </section>
             </div>
 
-            <div class="dashboard-layout bottom production-bottom">
-              <section class="sub-card chart-card chart-card-bar">
-                <div class="card-inline-head">
-                  <div>
-                    <h3>أفضل الخطوط</h3>
-                    <p class="muted">الخطوط الأعلى إنتاجًا حسب الكمية.</p>
-                  </div>
-                </div>
-                <canvas id="production-lines-chart" height="116"></canvas>
-              </section>
-
+            <div class="dashboard-layout bottom production-bottom production-bottom-single">
               <section class="sub-card">
                 <div class="card-inline-head">
                   <div>
-                    <h3>أفضل الأصناف</h3>
-                    <p class="muted">الأصناف الأعلى إنتاجًا داخل الشيت.</p>
+                    <h3>مقارنة الأصناف حسب التسليمات</h3>
+                    <p class="muted">المقارنة مبنية على التسليمات بالدستة فقط، مع فلتر سريع بين الفروع الثلاثة.</p>
+                  </div>
+                  <div class="segmented-control compact-segmented">
+                    <button class="segmented-btn active" type="button" data-production-items-source="">الكل</button>
+                    <button class="segmented-btn" type="button" data-production-items-source="الجاهز">الجاهز</button>
+                    <button class="segmented-btn" type="button" data-production-items-source="داخلي">داخلي</button>
+                    <button class="segmented-btn" type="button" data-production-items-source="وينكز">وينكز</button>
                   </div>
                 </div>
                 <div id="production-items-list" class="list-stack"></div>
-              </section>
-
-              <section class="sub-card">
-                <div class="card-inline-head">
-                  <div>
-                    <h3>أفضل الوجهات</h3>
-                    <p class="muted">الجهات أو الأقسام الأكثر استقبالًا للإنتاج.</p>
-                  </div>
-                </div>
-                <div id="production-destinations-list" class="list-stack"></div>
-              </section>
-            </div>
-
-            <div class="dashboard-layout bottom production-bottom production-bottom-secondary">
-              <section class="sub-card">
-                <div class="card-inline-head">
-                  <div>
-                    <h3>أفضل الموديلات</h3>
-                    <p class="muted">مقارنة الموديلات تعتمد على الكمية بالدستة.</p>
-                  </div>
-                </div>
-                <div id="production-models-list" class="list-stack"></div>
-              </section>
-
-              <section class="sub-card">
-                <div class="card-inline-head">
-                  <div>
-                    <h3>أفضل المقاسات</h3>
-                    <p class="muted">المقاسات الأعلى مساهمة داخل التبويب الحالي.</p>
-                  </div>
-                </div>
-                <div id="production-sizes-list" class="list-stack"></div>
-              </section>
-
-              <section class="sub-card">
-                <div class="card-inline-head">
-                  <div>
-                    <h3>أفضل الألوان</h3>
-                    <p class="muted">الألوان الأكثر تأثيرًا في الإنتاج بالدستة.</p>
-                  </div>
-                </div>
-                <div id="production-colors-list" class="list-stack"></div>
               </section>
             </div>
 
             <section class="sub-card table-card">
               <div class="card-inline-head">
                 <div>
-                  <h3>آخر السجلات</h3>
-                  <p class="muted">عينة من أحدث السجلات بعد تطبيق الفلاتر.</p>
+                  <h3>سجلات الإنتاج</h3>
+                  <p class="muted">كل سجلات الإنتاج مع بحث، فلتر تشغيل، وتقسيم صفحات كل 10 سطور.</p>
+                </div>
+                <div class="records-toolbar">
+                  <div class="segmented-control compact-segmented">
+                    <button class="segmented-btn active" type="button" data-production-records-source="">الكل</button>
+                    <button class="segmented-btn" type="button" data-production-records-source="الجاهز">الجاهز</button>
+                    <button class="segmented-btn" type="button" data-production-records-source="داخلي">داخلي</button>
+                    <button class="segmented-btn" type="button" data-production-records-source="وينكز">وينكز</button>
+                  </div>
+                  <label class="field records-search-field">
+                    <span>بحث</span>
+                    <input id="production-records-search" type="text" placeholder="ابحث بالخط أو الصنف أو الموديل أو اللون..." />
+                  </label>
                 </div>
               </div>
               <div class="table-wrap">
@@ -1194,16 +1164,22 @@
                       <th>الصنف</th>
                       <th>اللون</th>
                       <th>المقاس</th>
+                      <th>الدستة</th>
                       <th>الكمية</th>
                       <th>موجه إلى</th>
                     </tr>
                   </thead>
                   <tbody id="production-records-table">
                     <tr>
-                      <td colspan="10" class="empty-state">لا توجد بيانات بعد</td>
+                      <td colspan="11" class="empty-state">لا توجد بيانات بعد</td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              <div class="table-pager">
+                <button id="production-records-prev-page" class="btn btn-soft" type="button">السابق</button>
+                <span id="production-records-page-indicator" class="muted">صفحة 1 من 1</span>
+                <button id="production-records-next-page" class="btn btn-soft" type="button">التالي</button>
               </div>
             </section>
           </section>

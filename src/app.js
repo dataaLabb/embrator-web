@@ -33,6 +33,11 @@
     productionRequestAbortController: null,
     productionRequestToken: 0,
     productionRequestTimer: null,
+    productionItemsSourceTab: "",
+    productionRecordsSourceTab: "",
+    productionRecordsPage: 1,
+    productionRecordsSearch: "",
+    productionRecordsSearchTimer: null,
     fieldAnalyticsPayload: null,
     fieldMovementsPayload: null,
     fieldMovementsPage: 1,
@@ -269,18 +274,23 @@
     ui.productionColorFilter = document.getElementById("production-color-filter");
     ui.productionSizeFilter = document.getElementById("production-size-filter");
     ui.productionMonthFilter = document.getElementById("production-month-filter");
+    ui.productionDayFilter = document.getElementById("production-day-filter");
     ui.productionModelFilter = document.getElementById("production-model-filter");
     ui.productionMetrics = document.getElementById("production-metrics");
-    ui.productionDailyChart = document.getElementById("production-monthly-chart") || document.getElementById("production-daily-chart");
-    ui.productionSourceChart =
-      document.getElementById("production-destinations-chart") || document.getElementById("production-source-chart");
-    ui.productionLinesChart = document.getElementById("production-lines-chart");
+    ui.productionMonthlyChart = document.getElementById("production-monthly-chart");
+    ui.productionDailyChart = document.getElementById("production-daily-chart");
     ui.productionModelsList = document.getElementById("production-models-list");
     ui.productionItemsList = document.getElementById("production-items-list");
     ui.productionDestinationsList = document.getElementById("production-destinations-list");
     ui.productionSizesList = document.getElementById("production-sizes-list");
     ui.productionColorsList = document.getElementById("production-colors-list");
+    ui.productionItemsSourceButtons = Array.from(document.querySelectorAll("[data-production-items-source]"));
     ui.productionRecordsTable = document.getElementById("production-records-table");
+    ui.productionRecordsSourceButtons = Array.from(document.querySelectorAll("[data-production-records-source]"));
+    ui.productionRecordsSearch = document.getElementById("production-records-search");
+    ui.productionRecordsPrevPage = document.getElementById("production-records-prev-page");
+    ui.productionRecordsNextPage = document.getElementById("production-records-next-page");
+    ui.productionRecordsPageIndicator = document.getElementById("production-records-page-indicator");
     ui.productionLegacySource = document.getElementById("production-source");
     if (ui.productionLegacySource && ui.productionLegacySource.closest(".field")) {
       ui.productionLegacySource.closest(".field").classList.add("hidden");
@@ -456,6 +466,7 @@
     ui.unlockDashboard.addEventListener("click", onUnlockDashboard);
     ui.loadDashboard.addEventListener("click", onLoadDashboard);
     ui.loadProductionDashboard.addEventListener("click", function () {
+      state.productionRecordsPage = 1;
       onLoadProductionDashboard({ forceRefresh: true, announce: true });
     });
     ui.productionSourceButtons.forEach((button) => {
@@ -465,22 +476,65 @@
         scheduleProductionDashboardReload(0, { announce: false });
       });
     });
+    ui.productionItemsSourceButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        state.productionItemsSourceTab = button.dataset.productionItemsSource || "";
+        setActiveProductionItemsSourceTab();
+        if (state.productionPayload) {
+          renderProductionDeliveryItemsV2(state.productionPayload);
+        }
+      });
+    });
+    ui.productionRecordsSourceButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        state.productionRecordsSourceTab = button.dataset.productionRecordsSource || "";
+        state.productionRecordsPage = 1;
+        setActiveProductionRecordsSourceTab();
+        scheduleProductionDashboardReload(0, { announce: false });
+      });
+    });
     [
       ui.productionFrom,
       ui.productionTo,
       ui.productionLineFilter,
       ui.productionColorFilter,
       ui.productionSizeFilter,
-      ui.productionMonthFilter
+      ui.productionMonthFilter,
+      ui.productionDayFilter
     ].forEach((element) => {
       if (!element) return;
       element.addEventListener("change", function () {
+        state.productionRecordsPage = 1;
         scheduleProductionDashboardReload(160, { announce: false });
       });
     });
     if (ui.productionModelFilter) {
       ui.productionModelFilter.addEventListener("input", function () {
+        state.productionRecordsPage = 1;
         scheduleProductionDashboardReload(260, { announce: false });
+      });
+    }
+    if (ui.productionRecordsSearch) {
+      ui.productionRecordsSearch.addEventListener("input", function () {
+        state.productionRecordsSearch = ui.productionRecordsSearch.value.trim();
+        state.productionRecordsPage = 1;
+        if (state.productionRecordsSearchTimer) {
+          clearTimeout(state.productionRecordsSearchTimer);
+        }
+        state.productionRecordsSearchTimer = setTimeout(() => {
+          state.productionRecordsSearchTimer = null;
+          onLoadProductionDashboard({ announce: false });
+        }, 260);
+      });
+    }
+    if (ui.productionRecordsPrevPage) {
+      ui.productionRecordsPrevPage.addEventListener("click", function () {
+        changeProductionRecordsPage(-1);
+      });
+    }
+    if (ui.productionRecordsNextPage) {
+      ui.productionRecordsNextPage.addEventListener("click", function () {
+        changeProductionRecordsPage(1);
       });
     }
     ui.dashboardChartButtons.forEach((button) => {
@@ -632,6 +686,14 @@
     state.productionRequestAbortController = null;
     state.productionRequestToken = 0;
     state.productionRequestTimer = null;
+    state.productionItemsSourceTab = "";
+    state.productionRecordsSourceTab = "";
+    state.productionRecordsPage = 1;
+    state.productionRecordsSearch = "";
+    if (state.productionRecordsSearchTimer) {
+      clearTimeout(state.productionRecordsSearchTimer);
+    }
+    state.productionRecordsSearchTimer = null;
     state.fieldAnalyticsPayload = null;
     state.fieldMovementsPayload = null;
     state.fieldMovementsPage = 1;
@@ -2531,12 +2593,17 @@
       const body = {
         from: ui.productionFrom.value || null,
         to: ui.productionTo.value || null,
-        source: state.productionSourceTab || null,
+        source: ui.productionLegacySource ? ui.productionLegacySource.value || null : null,
+        selectedSource: state.productionSourceTab || null,
         line: ui.productionLineFilter ? ui.productionLineFilter.value || null : null,
         color: ui.productionColorFilter ? ui.productionColorFilter.value || null : null,
         size: ui.productionSizeFilter ? ui.productionSizeFilter.value || null : null,
         month: ui.productionMonthFilter ? ui.productionMonthFilter.value || null : null,
-        model: ui.productionModelFilter ? ui.productionModelFilter.value.trim() || null : null
+        day: ui.productionDayFilter ? ui.productionDayFilter.value || null : null,
+        model: ui.productionModelFilter ? ui.productionModelFilter.value.trim() || null : null,
+        recordsSource: state.productionRecordsSourceTab || null,
+        recordsSearch: state.productionRecordsSearch || null,
+        recordsPage: state.productionRecordsPage || 1
       };
       state.productionFilters = body;
       const cachedPayload = !opts.forceRefresh ? readCachedProductionPayload(body) : null;
@@ -2730,10 +2797,10 @@ function renderProductionDashboardV2(payload) {
   function syncProductionStaticCopy() {
     setProductionSectionCopy("لوحة الإنتاج", "شاشة تنفيذية تفاعلية تقرأ من Google Sheets، وتبني كل المقارنات والوصف على عمود الكمية بالدستة.");
     setProductionCardCopy(ui.productionDailyChart, "الإنتاج الشهري بالدستة", "اتجاه الإنتاج خلال الشهور اعتمادًا على الكمية بالدستة فقط.");
-    setProductionCardCopy(ui.productionSourceChart, "توزيع الوجهات بالدستة", "أكثر الجهات استقبالًا للإنتاج داخل التبويب الحالي بالدستة.");
-    setProductionCardCopy(ui.productionLinesChart, "أفضل الخطوط بالدستة", "الخطوط الأعلى إنتاجًا على أساس الكمية بالدستة.");
+    setProductionCardCopy(ui.productionSourceChart, "", "");
+    setProductionCardCopy(ui.productionLinesChart, "", "");
     setProductionCardCopy(ui.productionItemsList, "أفضل الأصناف", "مقارنة الأصناف مبنية على الكمية بالدستة.");
-    setProductionCardCopy(ui.productionDestinationsList, "أفضل الوجهات", "ترتيب الجهات والأقسام يتم بالدستة.");
+    setProductionCardCopy(ui.productionDestinationsList, "", "");
     syncProductionTableHeaders();
   }
 
@@ -3359,12 +3426,12 @@ function renderProductionSourceColumnV2(card) {
         </div>
         ${renderProductionTreeSequenceMarkupV2(context.menCard, menPrimarySteps, "men-tone")}
         <div class="production-branch-callout">
-          <span class="eyebrow">ويتفرع منها</span>
+          <span class="eyebrow"></span>
           ${renderProductionBranchTokensMarkupV2(context.menCard, menSideSteps.slice(0, 2), "men-tone")}
         </div>
         ${renderProductionTreeSequenceMarkupV2(context.menCard, [menTailSteps[0]], "men-tone")}
         <div class="production-branch-callout">
-          <span class="eyebrow">ويتفرع منها</span>
+          <span class="eyebrow"></span>
           ${renderProductionBranchTokensMarkupV2(context.menCard, menSideSteps.slice(2), "men-tone")}
         </div>
         ${renderProductionTreeSequenceMarkupV2(context.menCard, menTailSteps.slice(1), "men-tone")}
@@ -3486,6 +3553,20 @@ function renderProductionRecordsV2(rows) {
     });
   }
 
+  function setActiveProductionItemsSourceTab() {
+    if (!ui.productionItemsSourceButtons) return;
+    ui.productionItemsSourceButtons.forEach((button) => {
+      button.classList.toggle("active", (button.dataset.productionItemsSource || "") === (state.productionItemsSourceTab || ""));
+    });
+  }
+
+  function setActiveProductionRecordsSourceTab() {
+    if (!ui.productionRecordsSourceButtons) return;
+    ui.productionRecordsSourceButtons.forEach((button) => {
+      button.classList.toggle("active", (button.dataset.productionRecordsSource || "") === (state.productionRecordsSourceTab || ""));
+    });
+  }
+
   function renderProductionChartsV2(payload) {
     destroyProductionCharts();
     if (!window.Chart) return;
@@ -3536,6 +3617,332 @@ function renderProductionRecordsV2(rows) {
         ]
       },
       options: chartOptions({ indexAxis: "y" })
+    });
+  }
+
+  function renderProductionDashboardV2(payload) {
+    if (!payload) {
+      if (ui.productionMetrics) ui.productionMetrics.innerHTML = "";
+      if (ui.productionOverviewBoard) ui.productionOverviewBoard.innerHTML = "";
+      if (ui.productionOverallTotal) ui.productionOverallTotal.textContent = "--";
+      if (ui.productionItemsList) ui.productionItemsList.innerHTML = emptyInline("لا توجد بيانات بعد");
+      if (ui.productionRecordsTable) {
+        ui.productionRecordsTable.innerHTML = `<tr><td colspan="11" class="empty-state">لا توجد بيانات بعد</td></tr>`;
+      }
+      if (ui.productionRecordsPageIndicator) ui.productionRecordsPageIndicator.textContent = "1 / 1";
+      destroyProductionCharts();
+      return;
+    }
+
+    syncProductionStaticCopy();
+    renderProductionOverviewFlowV2(payload);
+    hydrateProductionFiltersV2(payload.filterOptions || {});
+
+    if (ui.productionMetrics) ui.productionMetrics.innerHTML = "";
+    renderProductionDeliveryItemsV2(payload);
+    renderProductionRecordsSectionV2(payload);
+    renderProductionChartsV2(payload);
+  }
+
+  function syncProductionStaticCopy() {
+    setProductionSectionCopy(
+      "لوحة الإنتاج",
+      "لوحة مبسطة تقرأ بيانات التسليمات من الفروع الثلاثة بالدستة مع فلاتر سريعة وسجلات إنتاج قابلة للبحث."
+    );
+    setProductionCardCopy(
+      ui.productionMonthlyChart,
+      "إجمالي التسليمات عبر الشهور",
+      "إجمالي تسليمات الجاهز والداخلي ووينكز بالدستة عبر كل شهر."
+    );
+    setProductionCardCopy(
+      ui.productionDailyChart,
+      "إجمالي التسليمات عبر الأيام",
+      "إجمالي تسليمات الفروع الثلاثة بالدستة عبر الأيام حسب الفلاتر الحالية."
+    );
+    setProductionCardCopy(
+      ui.productionItemsList,
+      "مقارنة الأصناف بالتسليمات",
+      "المقارنة مبنية على تسليمات الدستة مع اختيار الفرع من الفلاتر أعلى البطاقة."
+    );
+    syncProductionTableHeaders();
+  }
+
+  function syncProductionTableHeaders() {
+    const table = ui.productionRecordsTable ? ui.productionRecordsTable.closest("table") : null;
+    if (!table) return;
+    const headers = Array.from(table.querySelectorAll("thead th"));
+    const values = ["التاريخ", "التشغيل", "اسم الخط", "رقم القصة", "كود الموديل", "الصنف", "اللون", "المقاس", "الدستة", "الكمية", "موجه إلى"];
+    headers.forEach((header, index) => {
+      if (values[index]) header.textContent = values[index];
+    });
+    const head = table.closest(".sub-card");
+    if (!head) return;
+    const title = head.querySelector("h3");
+    const text = head.querySelector(".muted");
+    if (title) title.textContent = "سجلات الإنتاج";
+    if (text) text.textContent = "كل السجلات مع بحث مباشر وتقسيم إلى صفحات، وكل صفحة تعرض 10 سطور.";
+  }
+
+  function renderProductionFlowBoardMarkupV2(context) {
+    const SOURCE_READY = "الجاهز";
+    const SOURCE_INTERNAL = "داخلي";
+    const SOURCE_WINGS = "وينكز";
+
+    const readySteps = [
+      { label: "القص الجاهز", aliases: ["القص الجاهز", "قص الجاهز"] },
+      { label: "كنترول الجاهز", aliases: ["كنترول الجاهز"] },
+      { label: "تشغيل بنطلون", aliases: ["تشغيل بنطلون", "تشغيل البنطلون"] },
+      { label: "تشغيل التوب", aliases: ["تشغيل التوب"] },
+      { label: "فرز الجاهز", aliases: ["فرز الجاهز"] },
+      { label: "تسليمات الجاهز", aliases: ["تسليمات الجاهز"] }
+    ];
+
+    const wingsSteps = [
+      { label: "قص وينكيز", aliases: ["قص وينكيز", "قص وينكز", "القص وينكيز"] },
+      { label: "كنترول وينكيز", aliases: ["كنترول وينكيز", "كنترول وينكز"] },
+      { label: "خط البيبي", aliases: ["خط البيبي"] },
+      { label: "تشغيل فانلة وينكيز", aliases: ["تشغيل فانلة وينكيز", "فانلة وينكر", "تشغيل فانلة وينكز"] },
+      { label: "تشغيل شورت وينكيز", aliases: ["تشغيل شورت وينكيز", "شورت وينكر", "تشغيل شورت وينكز"] },
+      { label: "فرز وينكيز", aliases: ["فرز وينكيز", "فرز وينكز"] },
+      { label: "تسليمات وينكز", aliases: ["تسليمات وينكز", "تسليمات وينكيز"] }
+    ];
+
+    const menMainSteps = [
+      { label: "القص", aliases: ["القص"] },
+      { label: "الكنترول", aliases: ["الكنترول"] },
+      { label: "تشغيل الشورت", aliases: ["تشغيل الشورت", "تشغيل شورت"] },
+      { label: "سبور", aliases: ["سبور", "سنيور"] },
+      { label: "سبور متنوع", aliases: ["سبور متنوع", "سنيور متنوع"] },
+      { label: "بوكسر بزراير", aliases: ["بوكسر بزراير", "بوکسر بزراير", "جوكر براير"] },
+      { label: "سليب", aliases: ["سليب"] },
+      { label: "هاف شورت أورليه", aliases: ["هاف شورت أورليه", "هاف شورت أولية"] },
+      { label: "هوت مان فانلة", aliases: ["هوت مان فانلة"] },
+      { label: "فرز", aliases: ["فرز", "الفرز"] },
+      { label: "انتاج تسليمات", aliases: ["انتاج تسليمات", "تسليمات الداخلي"] }
+    ];
+
+    const menSideTop = [
+      { label: "نص كم", aliases: ["نص كم"] },
+      { label: "نص كم متنوع", aliases: ["نص كم متنوع", "نص كم متفرع"] }
+    ];
+
+    const menSideBottom = [
+      { label: "هوت مان كلسون", aliases: ["هوت مان كلسون", "هوت مان كلسون"] },
+      { label: "هاف شورت شوتس", aliases: ["هاف شورت شوتس", "هاف شورت شتوي"] }
+    ];
+
+    const allView = !context.selectedSource;
+    const showReady = allView || context.selectedSource === SOURCE_READY;
+    const showInternal = allView || context.selectedSource === SOURCE_INTERNAL;
+    const showWingsOnly = context.selectedSource === SOURCE_WINGS;
+
+    const readyBlock = showReady
+      ? `
+        <section class="production-tree-panel ready-panel" data-production-source-card="${SOURCE_READY}">
+          <div class="production-tree-panel-head">
+            <div>
+              <span class="eyebrow">مسار الجاهز</span>
+              <h4>${SOURCE_READY}</h4>
+            </div>
+            <strong>${escapeHtml(formatRoundedNumber(context.readyCard.totalDozens || 0))}</strong>
+          </div>
+          ${renderProductionTreeSequenceMarkupV2(context.readyCard, readySteps, "ready-tone")}
+        </section>
+      `
+      : "";
+
+    const wingsBlock = `
+      <section class="production-tree-branch wings-branch" data-production-source-card="${SOURCE_WINGS}">
+        <div class="production-tree-branch-head">
+          <h5>${SOURCE_WINGS}</h5>
+          <strong>${escapeHtml(formatRoundedNumber(context.wingsCard.totalDozens || 0))}</strong>
+        </div>
+        ${renderProductionTreeSequenceMarkupV2(context.wingsCard, wingsSteps, "wings-tone", true)}
+      </section>
+    `;
+
+    const menPrimarySteps = menMainSteps.slice(0, 8);
+    const menTailSteps = menMainSteps.slice(8);
+
+    const menBlock = `
+      <section class="production-tree-branch men-branch">
+        <div class="production-tree-branch-head">
+          <h5>رجالي</h5>
+          <strong>${escapeHtml(formatRoundedNumber(context.menCard.totalDozens || 0))}</strong>
+        </div>
+        ${renderProductionTreeSequenceMarkupV2(context.menCard, menPrimarySteps, "men-tone")}
+        <div class="production-branch-callout">
+          ${renderProductionBranchTokensMarkupV2(context.menCard, menSideTop, "men-tone")}
+        </div>
+        ${renderProductionTreeSequenceMarkupV2(context.menCard, [menTailSteps[0]], "men-tone")}
+        <div class="production-branch-callout">
+          ${renderProductionBranchTokensMarkupV2(context.menCard, menSideBottom, "men-tone")}
+        </div>
+        ${renderProductionTreeSequenceMarkupV2(context.menCard, menTailSteps.slice(1), "men-tone")}
+      </section>
+    `;
+
+    if (showWingsOnly) {
+      return `
+        <div class="production-tree-board single-source">
+          <div class="production-tree-root-card">
+            <span class="eyebrow">إنتاج مجموعة ساقية إخوان</span>
+            <h3>${SOURCE_WINGS}</h3>
+            <p>عرض تفصيلي لمسار وينكز اعتمادًا على أسماء الخطوط الفعلية في الشيت.</p>
+          </div>
+          ${wingsBlock}
+        </div>
+      `;
+    }
+
+    const internalBlock = showInternal
+      ? `
+        <section class="production-tree-panel internal-panel" data-production-source-card="${SOURCE_INTERNAL}">
+          <div class="production-tree-panel-head">
+            <div>
+              <span class="eyebrow">إنتاج مجموعة ساقية إخوان</span>
+              <h4>${SOURCE_INTERNAL}</h4>
+            </div>
+            <strong>${escapeHtml(formatRoundedNumber(context.internalDeliveryTotal || 0))}</strong>
+          </div>
+          <div class="production-tree-split">
+            ${wingsBlock}
+            ${menBlock}
+          </div>
+        </section>
+      `
+      : "";
+
+    return `
+      <div class="production-tree-board ${allView ? "overview-mode" : "single-source"}">
+        <div class="production-tree-root-card">
+          <span class="eyebrow">إنتاج مجموعة ساقية إخوان</span>
+          <h3>${context.selectedSource || "الهيكل الرئيسي"}</h3>
+          <p>توزيع بصري مبسط للمراحل الأساسية والتسليمات النهائية داخل كل فرع.</p>
+        </div>
+        <div class="production-tree-grid">
+          ${internalBlock}
+          ${readyBlock}
+        </div>
+      </div>
+    `;
+  }
+
+  function hydrateProductionFiltersV2(filterOptions) {
+    populateSelectV2(ui.productionLineFilter, filterOptions.lines || [], state.productionFilters && state.productionFilters.line);
+    populateSelectV2(ui.productionColorFilter, filterOptions.colors || [], state.productionFilters && state.productionFilters.color);
+    populateSelectV2(ui.productionSizeFilter, filterOptions.sizes || [], state.productionFilters && state.productionFilters.size);
+    populateSelectV2(
+      ui.productionMonthFilter,
+      (filterOptions.months || []).map((value) => ({ value, label: formatMonthKeyV2(value) })),
+      state.productionFilters && state.productionFilters.month
+    );
+    populateSelectV2(
+      ui.productionDayFilter,
+      (filterOptions.days || []).map((value) => ({ value, label: formatDayKeyV2(value) })),
+      state.productionFilters && state.productionFilters.day
+    );
+    if (ui.productionModelFilter && state.productionFilters && typeof state.productionFilters.model === "string") {
+      ui.productionModelFilter.value = state.productionFilters.model;
+    }
+  }
+
+  function formatDayKeyV2(value) {
+    return formatDate(value);
+  }
+
+  function renderProductionDeliveryItemsV2(payload) {
+    const entriesMap = payload.deliveryItemsBySource && typeof payload.deliveryItemsBySource === "object"
+      ? payload.deliveryItemsBySource
+      : {};
+    const activeSource = state.productionItemsSourceTab || "";
+    let rows = [];
+
+    if (activeSource) {
+      rows = Array.isArray(entriesMap[activeSource]) ? entriesMap[activeSource].slice() : [];
+    } else {
+      const totals = new Map();
+      Object.values(entriesMap).forEach((group) => {
+        (Array.isArray(group) ? group : []).forEach((entry) => {
+          const current = totals.get(entry.label) || 0;
+          totals.set(entry.label, current + Number(entry.total || 0));
+        });
+      });
+      rows = Array.from(totals.entries()).map(([label, total]) => ({ label, total }));
+    }
+
+    rows.sort((a, b) => Number(b.total || 0) - Number(a.total || 0));
+    if (ui.productionItemsList) {
+      ui.productionItemsList.innerHTML = rows.length
+        ? renderScoreList(rows, "دستة", formatNumber)
+        : emptyInline("لا توجد بيانات مطابقة");
+    }
+    setActiveProductionItemsSourceTab();
+  }
+
+  function renderProductionRecordsSectionV2(payload) {
+    const rows = Array.isArray(payload.recordsRows) ? payload.recordsRows : [];
+    if (ui.productionRecordsTable) {
+      ui.productionRecordsTable.innerHTML = renderProductionRecordsV2(rows);
+    }
+    if (ui.productionRecordsPageIndicator) {
+      ui.productionRecordsPageIndicator.textContent = `${payload.recordsPage || 1} / ${payload.recordsTotalPages || 1}`;
+    }
+    if (ui.productionRecordsPrevPage) {
+      ui.productionRecordsPrevPage.disabled = (payload.recordsPage || 1) <= 1;
+    }
+    if (ui.productionRecordsNextPage) {
+      ui.productionRecordsNextPage.disabled = (payload.recordsPage || 1) >= (payload.recordsTotalPages || 1);
+    }
+    if (ui.productionRecordsSearch && ui.productionRecordsSearch.value !== (state.productionRecordsSearch || "")) {
+      ui.productionRecordsSearch.value = state.productionRecordsSearch || "";
+    }
+    setActiveProductionRecordsSourceTab();
+  }
+
+  function changeProductionRecordsPage(step) {
+    const current = Number(state.productionRecordsPage || 1);
+    state.productionRecordsPage = Math.max(1, current + Number(step || 0));
+    onLoadProductionDashboard({ announce: false });
+  }
+
+  function renderProductionChartsV2(payload) {
+    destroyProductionCharts();
+    if (!window.Chart) return;
+
+    state.charts.productionMonthly = new window.Chart(ui.productionMonthlyChart, {
+      type: "line",
+      data: {
+        labels: (payload.monthlyDeliveryDozens || []).map((row) => formatMonthKeyV2(row.label)),
+        datasets: [
+          {
+            label: "إجمالي التسليمات بالدستة",
+            data: (payload.monthlyDeliveryDozens || []).map((row) => row.total),
+            borderColor: "#8c5a1e",
+            backgroundColor: "rgba(140, 90, 30, 0.12)",
+            tension: 0.32,
+            fill: true
+          }
+        ]
+      },
+      options: chartOptions()
+    });
+
+    state.charts.productionDaily = new window.Chart(ui.productionDailyChart, {
+      type: "bar",
+      data: {
+        labels: (payload.dailyDeliveryDozens || []).map((row) => formatDayKeyV2(row.label)),
+        datasets: [
+          {
+            label: "إجمالي التسليمات بالدستة",
+            data: (payload.dailyDeliveryDozens || []).map((row) => row.total),
+            backgroundColor: "#3a6ea5",
+            borderRadius: 10,
+            maxBarThickness: 28
+          }
+        ]
+      },
+      options: chartOptions()
     });
   }
 
@@ -4092,7 +4499,7 @@ function renderScoreList(rows, suffix, formatterFn) {
   }
 
   function destroyProductionCharts() {
-    ["productionDaily", "productionSource", "productionLines"].forEach((key) => {
+    ["productionMonthly", "productionDaily", "productionSource", "productionLines"].forEach((key) => {
       if (state.charts[key] && typeof state.charts[key].destroy === "function") {
         state.charts[key].destroy();
       }

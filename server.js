@@ -384,8 +384,10 @@ function sumProductionRowsByAliases(rows, aliases, valueKey) {
 
 function deliveryAliasesForSource(sheetKey) {
   if (sheetKey === "ready") return ["تسليمات الجاهز", "تسليمات جاهز"];
-  if (sheetKey === "internal") return ["تسليمات الداخلي", "تسليمات داخلي"];
-  if (sheetKey === "wings") return ["تسليمات وينكز", "تسليمات وينكيز", "تسليمات وينكر", "تسليمات رينكيز"];
+  if (sheetKey === "internal") return ["انتاج تسليمات", "تسليمات الداخلي", "تسليمات داخلي"];
+  if (sheetKey === "wings") {
+    return ["تسليمات وينكز", "تسليمات وينكيز", "تسليمات وينكر", "تسليمات رينكيز"];
+  }
   return [];
 }
 
@@ -1542,15 +1544,21 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
       const from = String(req.body.from || "").trim();
       const to = String(req.body.to || "").trim();
       const source = String(req.body.source || "").trim();
+      const selectedSource = String(req.body.selectedSource || "").trim();
       const line = String(req.body.line || "").trim();
       const color = String(req.body.color || "").trim();
       const size = String(req.body.size || "").trim();
       const month = String(req.body.month || "").trim();
+      const day = String(req.body.day || "").trim();
       const model = String(req.body.model || "").trim();
+      const recordsSource = String(req.body.recordsSource || "").trim();
+      const recordsSearch = String(req.body.recordsSearch || "").trim();
+      const recordsPage = Math.max(1, Number(req.body.recordsPage || 1) || 1);
       const lineKey = normalizeArabicToken(line);
       const colorKey = normalizeArabicToken(color);
       const sizeKey = normalizeArabicToken(size);
       const modelKey = normalizeArabicToken(model);
+      const recordsSearchKey = normalizeArabicToken(recordsSearch);
       const rows = await getProductionRows();
 
       const dateScoped = rows.filter((row) => {
@@ -1569,6 +1577,7 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
         if (colorKey && row.colorKey !== colorKey) return false;
         if (sizeKey && row.sizeKey !== sizeKey) return false;
         if (month && row.dateMonth !== month) return false;
+        if (day && row.date !== day) return false;
         if (modelKey && !row.modelCodeKey.includes(modelKey)) return false;
         return true;
       });
@@ -1578,29 +1587,27 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
       const overallTotalQuantity = dateScoped.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
       const overallTotalDozens = dateScoped.reduce((sum, row) => sum + Number(row.dozens || 0), 0);
 
+      const allDeliveryAliases = PRODUCTION_SHEETS.flatMap((sheet) => deliveryAliasesForSource(sheet.key));
+      const deliveryRows = dateScoped.filter((row) => {
+        if (month && row.dateMonth !== month) return false;
+        if (day && row.date !== day) return false;
+        return rowMatchesProductionAliases(row, allDeliveryAliases);
+      });
+
       const monthlyDozensMap = new Map();
-      filtered.forEach((row) => {
+      deliveryRows.forEach((row) => {
         if (!row.date) return;
         const key = String(row.date).slice(0, 7);
         monthlyDozensMap.set(key, (monthlyDozensMap.get(key) || 0) + Number(row.dozens || 0));
       });
 
-      const monthlyDozens = Array.from(monthlyDozensMap.entries())
+      const monthlyDeliveryDozens = Array.from(monthlyDozensMap.entries())
         .map(([label, total]) => ({ label, total: Number(total.toFixed(2)) }))
         .sort((a, b) => a.label.localeCompare(b.label));
 
-      const dailyDozens = summarizeTop(filtered, "date", "dozens", 120)
+      const dailyDeliveryDozens = summarizeTop(deliveryRows, "date", "dozens", 366)
         .filter((row) => row.label && row.label !== "غير محدد")
         .sort((a, b) => a.label.localeCompare(b.label));
-
-      const bySource = summarizeTop(filtered, "source", "dozens", 10);
-      const topLines = summarizeTop(filtered, "lineName", "dozens", 8);
-      const topItems = summarizeTop(filtered, "itemName", "dozens", 8);
-      const topDestinations = summarizeTop(filtered, "destination", "dozens", 8);
-      const sizeBreakdown = summarizeTop(filtered, "size", "dozens", 10);
-      const topModels = summarizeTop(filtered, "modelCode", "dozens", 10);
-      const topColors = summarizeTop(filtered, "color", "dozens", 10);
-      const topStories = summarizeTop(filtered, "storyNo", "dozens", 10);
 
       const sourceCards = PRODUCTION_SHEETS.filter((sheet) => sheet.gid).map((sheet) => {
         const sourceRows = dateScoped.filter((row) => row.source === sheet.title);
@@ -1623,6 +1630,16 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
         };
       });
 
+      const deliveryItemsBySource = PRODUCTION_SHEETS.filter((sheet) => sheet.gid).reduce((acc, sheet) => {
+        const sourceDeliveryRows = filtered.filter(
+          (row) => row.source === sheet.title && rowMatchesProductionAliases(row, deliveryAliasesForSource(sheet.key))
+        );
+        acc[sheet.title] = summarizeTop(sourceDeliveryRows, "itemName", "dozens", 12).filter(
+          (row) => row.label && row.label !== "غير محدد"
+        );
+        return acc;
+      }, {});
+
       const filterOptions = {
         lines: Array.from(new Set(sourceScoped.map((row) => row.lineName).filter(Boolean))).sort((a, b) =>
           a.localeCompare(b, "ar")
@@ -1633,43 +1650,55 @@ app.post("/api/production-dashboard-v2", authRequired, async (req, res) => {
         sizes: Array.from(new Set(sourceScoped.map((row) => row.size).filter(Boolean))).sort((a, b) =>
           a.localeCompare(b, "ar")
         ),
-        months: Array.from(new Set(sourceScoped.map((row) => String(row.date || "").slice(0, 7)).filter(Boolean))).sort()
+        months: Array.from(new Set(sourceScoped.map((row) => String(row.date || "").slice(0, 7)).filter(Boolean))).sort(),
+        days: Array.from(new Set(sourceScoped.map((row) => row.date).filter(Boolean))).sort()
       };
 
-      const recentRecords = filtered
+      const recordsScoped = filtered.filter((row) => {
+        if (recordsSource && row.source !== recordsSource) return false;
+        if (!recordsSearchKey) return true;
+        return [
+          row.source,
+          row.lineName,
+          row.storyNo,
+          row.modelCode,
+          row.itemName,
+          row.color,
+          row.size,
+          row.destination
+        ]
+          .map((value) => normalizeArabicToken(value))
+          .some((value) => value.includes(recordsSearchKey));
+      });
+
+      const allRecords = recordsScoped
         .filter((row) => row.date)
         .sort((a, b) => {
           const dateDiff = String(b.date).localeCompare(String(a.date));
           if (dateDiff !== 0) return dateDiff;
           return Number(b.dozens || 0) - Number(a.dozens || 0);
-        })
-        .slice(0, 12);
+        });
+      const recordsPageSize = 10;
+      const recordsTotalPages = Math.max(1, Math.ceil(allRecords.length / recordsPageSize));
+      const safeRecordsPage = Math.min(recordsPage, recordsTotalPages);
+      const recordsRows = allRecords.slice((safeRecordsPage - 1) * recordsPageSize, safeRecordsPage * recordsPageSize);
 
       return {
-        selectedSource: source || "الكل",
+        selectedSource: selectedSource || "الكل",
         overallTotalQuantity: Number(overallTotalQuantity.toFixed(2)),
         overallTotalDozens: Number(overallTotalDozens.toFixed(2)),
         totalQuantity: Number(totalQuantity.toFixed(2)),
         totalDozens: Number(totalDozens.toFixed(2)),
-        recordsCount: filtered.length,
-        storiesCount: new Set(filtered.map((row) => row.storyNo).filter(Boolean)).size,
-        modelsCount: new Set(filtered.map((row) => row.modelCode).filter(Boolean)).size,
-        linesCount: new Set(filtered.map((row) => row.lineName).filter(Boolean)).size,
-        averageDozensPerRecord: filtered.length ? Number((totalDozens / filtered.length).toFixed(2)) : 0,
         sourceCards,
         filterOptions,
         sources: PRODUCTION_SHEETS.map((sheet) => sheet.title),
-        bySource,
-        dailyDozens,
-        monthlyDozens,
-        topLines,
-        topModels,
-        topItems,
-        topDestinations,
-        topColors,
-        topStories,
-        sizeBreakdown,
-        recentRecords
+        deliveryItemsBySource,
+        monthlyDeliveryDozens,
+        dailyDeliveryDozens,
+        recordsRows,
+        recordsPage: safeRecordsPage,
+        recordsTotalPages,
+        recordsTotalCount: allRecords.length
       };
     });
 
